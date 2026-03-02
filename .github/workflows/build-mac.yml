@@ -1,6 +1,5 @@
 name: Build Mac Executable
 
-# 触发条件：手动触发（最灵活）
 on:
   workflow_dispatch:
     inputs:
@@ -9,65 +8,24 @@ on:
         required: true
         default: 'v1.0.0'
 
-# 也可以设置自动触发（取消下面注释）
-# on:
-#   push:
-#     tags:
-#       - 'v*'  # 当推送v1.0.0这样的标签时触发
-
 jobs:
   build-mac:
-    name: Build on macOS
-    runs-on: macos-13  # 使用GitHub提供的macOS环境！[citation:6]
-    
+    runs-on: macos-latest
     steps:
-      # 1. 检出代码
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       
-      # 2. 设置Python环境
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
-          architecture: 'x64'
+          python-version: '3.11'  # 使用 3.11，彻底避免链接问题
       
-      # 3. 安装依赖
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      
-      # 4. 使用PyInstaller打包 [citation:6]
-      - name: Build with PyInstaller
-        run: |
+      - run: |
+          pip install pyqt5 pyinstaller
           pyinstaller --onefile --windowed \
             --name="货物加工系统" \
             --add-data "database.db:." \
-            --hidden-import=PyQt5.QtCore \
-            --hidden-import=PyQt5.QtGui \
-            --hidden-import=PyQt5.QtWidgets \
-            --hidden-import=sqlite3 \
             main.py
       
-      # 5. 重命名可执行文件（添加版本号）
-      - name: Rename executable
-        run: |
-          mv dist/"货物加工系统" dist/"货物加工系统_${{ github.event.inputs.version }}"
-      
-      # 6. 上传构建产物 [citation:3]
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: 货物加工系统-Mac-${{ github.event.inputs.version }}
-          path: dist/货物加工系统_${{ github.event.inputs.version }}
-      
-      # 7. 创建Release（可选）[citation:6]
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            dist/货物加工系统_${{ github.event.inputs.version }}
-          draft: false
-          prerelease: false
+          path: dist/货物加工系统
