@@ -10,22 +10,48 @@ on:
 
 jobs:
   build-mac:
-    runs-on: macos-latest
+    name: Build on macOS
+    runs-on: macos-13
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
       
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'  # 使用 3.11，彻底避免链接问题
+      # 使用 Homebrew 安装 Python 3.9（绕过 setup-python 的预编译二进制）
+      - name: Install Python 3.9 via Homebrew
+        run: |
+          brew update
+          brew install python@3.9
+          
+          # 将 Homebrew 的 Python 添加到 PATH
+          echo "/usr/local/opt/python@3.9/bin" >> $GITHUB_PATH
+          echo "/usr/local/opt/python@3.9/libexec/bin" >> $GITHUB_PATH
       
-      - run: |
-          pip install pyqt5 pyinstaller
+      - name: Verify Python installation
+        run: |
+          which python3
+          python3 --version
+          python3 -m pip --version
+      
+      - name: Install Python dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install pyqt5 pyinstaller
+      
+      - name: Build with PyInstaller
+        run: |
           pyinstaller --onefile --windowed \
             --name="货物加工系统" \
             --add-data "database.db:." \
+            --hidden-import=PyQt5.sip \
+            --hidden-import=PyQt5.QtCore \
+            --hidden-import=PyQt5.QtGui \
+            --hidden-import=PyQt5.QtWidgets \
+            --hidden-import=sqlite3 \
             main.py
       
-      - uses: actions/upload-artifact@v4
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
           name: 货物加工系统-Mac-${{ github.event.inputs.version }}
           path: dist/货物加工系统
