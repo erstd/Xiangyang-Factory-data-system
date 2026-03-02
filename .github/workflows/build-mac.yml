@@ -30,7 +30,7 @@ jobs:
         run: |
           pyinstaller --onefile --windowed \
             --name="货物加工系统" \
-            --add-data "database.db:." \
+            --add-data "xiangyang_factory.db:." \
             main.py
       
       - name: Upload artifact
