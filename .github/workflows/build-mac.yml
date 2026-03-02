@@ -18,7 +18,7 @@ on:
 jobs:
   build-mac:
     name: Build on macOS
-    runs-on: macos-latest  # 使用GitHub提供的macOS环境！[citation:6]
+    runs-on: macos-13  # 使用GitHub提供的macOS环境！[citation:6]
     
     steps:
       # 1. 检出代码
