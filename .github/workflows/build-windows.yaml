@@ -28,13 +28,13 @@ jobs:
       - name: Build with PyInstaller
         run: |
           pyinstaller --onefile --windowed `
-            --name="货物加工系统" `
+            --name="cargo_system" `
             --add-data "xiangyang_factory.db;." `
             main.py
         shell: powershell
       
-      - name: Upload artifact
+      - name: Upload artifact (使用英文名)
         uses: actions/upload-artifact@v4
         with:
-          name: 货物加工系统-Windows-${{ github.event.inputs.version }}
-          path: dist/货物加工系统.exe
+          name: cargo-system-windows-${{ github.event.inputs.version }}
+          path: dist/cargo_system.exe
