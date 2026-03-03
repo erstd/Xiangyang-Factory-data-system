@@ -11,7 +11,7 @@ def get_database_path():
         # 开发环境 - 当前脚本所在目录
         base_path = os.path.dirname(os.path.abspath(__file__))
     
-    db_path = os.path.join(base_path, 'database.db')
+    db_path = os.path.join(base_path, 'xiangyang_factory.db')
     
     # 如果数据库不存在，创建初始数据库
     if not os.path.exists(db_path):
