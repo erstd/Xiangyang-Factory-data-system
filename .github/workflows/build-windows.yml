@@ -43,6 +43,12 @@ jobs:
       working-directory: ./electron-app
       run: npm run build:win
 
+    - name: Verify Electron build
+      working-directory: ./electron-app
+      run: |
+        Write-Host "Checking build output..."
+        Get-ChildItem -Recurse dist-electron\win-unpacked | Select-Object -First 30
+
     - name: Create release package
       run: |
         mkdir release
@@ -56,7 +62,7 @@ jobs:
         xcopy electron-app\dist-electron\win-unpacked release\xiangyang-factory\ /E /I
 
         echo @echo off > release\xiangyang-factory\start.bat
-        echo echo 启动向阳厂管理系统... >> release\xiangyang-factory\start.bat
+        echo echo Starting Xiangyang Factory Management System... >> release\xiangyang-factory\start.bat
         echo start /B xiangyang-backend.exe >> release\xiangyang-factory\start.bat
         echo timeout /t 2 /nobreak ^>nul >> release\xiangyang-factory\start.bat
         echo start "xiangyang-factory" "xiangyang-factory.exe" >> release\xiangyang-factory\start.bat

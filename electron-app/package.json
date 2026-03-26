@@ -31,14 +31,9 @@
       "preload.js",
       "pages/**/*",
       "js/**/*",
-      "styles/**/*",
-      "src/**/*"
+      "styles/**/*"
     ],
-    "extraResources": [
-      "pages",
-      "js",
-      "styles"
-    ],
+    "asar": true,
     "win": {
       "target": ["dir"],
       "icon": "public/icon.ico"
