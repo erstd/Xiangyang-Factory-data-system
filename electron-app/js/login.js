@@ -1,0 +1,49 @@
+const API_BASE = 'http://localhost:5000';
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+  const loginBtn = document.getElementById('loginBtn');
+
+  if (!username || !password) {
+    alert('请输入用户名和密码');
+    return;
+  }
+
+  loginBtn.disabled = true;
+  loginBtn.textContent = '登录中...';
+
+  try {
+    const response = await fetch(`${API_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      // 保存用户信息到localStorage
+      localStorage.setItem('user', JSON.stringify({
+        username: data.username,
+        role: data.role,
+        token: data.token
+      }));
+
+      // 跳转到主页面
+      window.location.href = 'main.html';
+    } else {
+      alert(data.detail || '登录失败');
+    }
+  } catch (error) {
+    console.error('登录错误:', error);
+    alert('登录失败，请检查网络连接');
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = '登 录';
+  }
+});

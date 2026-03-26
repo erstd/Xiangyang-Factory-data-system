@@ -1,0 +1,33 @@
+#!/bin/bash
+
+echo "启动向阳厂管理系统..."
+
+# 检查 Python 依赖
+if ! python3 -c "import flask" 2>/dev/null; then
+    echo "正在安装 Python 依赖..."
+    pip3 install -r requirements.txt
+fi
+
+# 启动后端服务器
+echo "启动后端 API 服务器..."
+python3 api_server.py &
+BACKEND_PID=$!
+
+# 等待后端启动
+sleep 3
+
+# 进入前端目录
+cd electron-app
+
+# 检查 Node 依赖
+if [ ! -d "node_modules" ]; then
+    echo "正在安装前端依赖..."
+    npm install
+fi
+
+# 启动 Electron 应用
+echo "启动 Electron 应用..."
+npm start
+
+# 清理后台进程
+kill $BACKEND_PID

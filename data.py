@@ -1,4 +1,7 @@
 import sqlite3
+import sys
+import os
+import shutil
 from datetime import datetime
 
 
@@ -10,13 +13,24 @@ def get_database_path():
     else:
         # 开发环境 - 当前脚本所在目录
         base_path = os.path.dirname(os.path.abspath(__file__))
-    
+
     db_path = os.path.join(base_path, 'xiangyang_factory.db')
-    
+
+    # 打包环境下，检查临时目录中是否有数据库（首次运行时从打包资源复制）
+    if getattr(sys, 'frozen', False):
+        # 检查可执行文件旁边是否已有数据库
+        if not os.path.exists(db_path):
+            # 尝试从 _MEIPASS 临时目录复制（如果打包时包含了数据库）
+            meipass = getattr(sys, '_MEIPASS', '')
+            if meipass:
+                temp_db = os.path.join(meipass, 'xiangyang_factory.db')
+                if os.path.exists(temp_db):
+                    shutil.copy2(temp_db, db_path)
+
     # 如果数据库不存在，创建初始数据库
     if not os.path.exists(db_path):
         create_initial_database(db_path)
-    
+
     return db_path
 
 class DatabaseManager:
@@ -37,6 +51,7 @@ class DatabaseManager:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 goods_type TEXT NOT NULL CHECK(goods_type IN ('织纱', '织片')),
                 customer_name TEXT NOT NULL,
+                customer_style_no TEXT,
                 customer_send_date TEXT,
                 customer_send_method TEXT,
                 customer_send_qty INTEGER DEFAULT 0,
@@ -76,9 +91,11 @@ class DatabaseManager:
                 deduction_remark TEXT,
                 knitting_wage REAL,
                 overlock_employee TEXT,
+                overlock_goods_type TEXT,
                 overlock_qty INTEGER,
                 overlock_wage REAL,
                 hand_sewing_employee TEXT,
+                hand_sewing_goods_type TEXT,
                 hand_sewing_qty INTEGER,
                 hand_sewing_wage REAL,
                 outsourcing_date TEXT,
@@ -141,7 +158,24 @@ class DatabaseManager:
             ''', ('factory', 'factory123', 'factory', datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
         
         self.conn.commit()
-    
+
+        # 为已存在的数据库添加 customer_style_no 字段
+        self.cursor.execute("PRAGMA table_info(goods_processing_v2)")
+        columns = [col[1] for col in self.cursor.fetchall()]
+        if 'customer_style_no' not in columns:
+            self.cursor.execute('ALTER TABLE goods_processing_v2 ADD COLUMN customer_style_no TEXT')
+            self.conn.commit()
+
+        # 为已存在的工资核算表添加货物种类字段
+        self.cursor.execute("PRAGMA table_info(wage_calculation)")
+        wage_columns = [col[1] for col in self.cursor.fetchall()]
+        if 'overlock_goods_type' not in wage_columns:
+            self.cursor.execute('ALTER TABLE wage_calculation ADD COLUMN overlock_goods_type TEXT')
+            self.conn.commit()
+        if 'hand_sewing_goods_type' not in wage_columns:
+            self.cursor.execute('ALTER TABLE wage_calculation ADD COLUMN hand_sewing_goods_type TEXT')
+            self.conn.commit()
+
     def execute_query(self, query, params=None):
         """执行查询"""
         try:

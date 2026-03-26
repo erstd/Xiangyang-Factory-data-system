@@ -1,13 +1,46 @@
 import sqlite3
 from datetime import datetime
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem,
     QMessageBox, QDialog, QTabWidget, QComboBox, QDateEdit, QHeaderView,
-    QTextEdit, QGridLayout, QGroupBox, QSplitter, QFileDialog
+    QTextEdit, QGridLayout, QGroupBox, QSplitter, QFileDialog, QFrame
 )
 from PyQt5.QtCore import Qt, QDate
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QColor
+
+
+def show_styled_message(parent, title, text, icon=QMessageBox.Information):
+    """显示统一样式的消息框"""
+    msg = QMessageBox(parent)
+    msg.setWindowTitle(title)
+    msg.setText(text)
+    msg.setIcon(icon)
+    msg.setStyleSheet("""
+        QMessageBox {
+            background-color: white;
+        }
+        QLabel {
+            color: #212121;
+            font-size: 16px;
+            min-width: 240px;
+            padding: 10px;
+        }
+        QPushButton {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 24px;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            min-width: 70px;
+        }
+        QPushButton:hover {
+            background-color: #1976D2;
+        }
+    """)
+    return msg.exec_()
 
 
 class GoodsProcessingTab(QWidget):
@@ -22,99 +55,319 @@ class GoodsProcessingTab(QWidget):
     
     def init_ui(self):
         layout = QVBoxLayout()
-        
-        # ===== 搜索区域增强 =====
+        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(12)
+
+        # ===== 搜索区域 =====
+        search_card = QFrame()
+        search_card.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+            }
+        """)
+
         search_layout = QHBoxLayout()
-        
+        search_layout.setContentsMargins(15, 12, 15, 12)
+        search_layout.setSpacing(12)
+
         # 类型筛选
+        type_label = QLabel('货物类型')
+        type_label.setFont(QFont('Microsoft YaHei', 13))
+        type_label.setStyleSheet("color: #424242;")
+
         self.type_filter = QComboBox()
         self.type_filter.addItems(['全部', '织纱', '织片'])
         self.type_filter.currentTextChanged.connect(self.load_data)
-        
+        self.type_filter.setFont(QFont('Microsoft YaHei', 13))
+        self.type_filter.setStyleSheet("""
+            QComboBox {
+                background-color: #F5F5F5;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+                padding: 6px 12px;
+                min-width: 100px;
+            }
+            QComboBox:hover {
+                border: 1px solid #2196F3;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+        """)
+
+        # 搜索关键词
+        keyword_label = QLabel('关键词')
+        keyword_label.setFont(QFont('Microsoft YaHei', 13))
+        keyword_label.setStyleSheet("color: #424242; margin-left: 15px;")
+
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText('搜索客户名称/款号...')
         self.search_input.returnPressed.connect(self.search_data)
-        
+        self.search_input.setFont(QFont('Microsoft YaHei', 13))
+        self.search_input.setStyleSheet("""
+            QLineEdit {
+                background-color: #F5F5F5;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+                padding: 6px 12px;
+                min-width: 200px;
+            }
+            QLineEdit:hover {
+                border: 1px solid #2196F3;
+            }
+            QLineEdit:focus {
+                border: 1px solid #2196F3;
+                background-color: white;
+            }
+        """)
+
         search_btn = QPushButton('搜索')
         search_btn.clicked.connect(self.search_data)
+        search_btn.setCursor(Qt.PointingHandCursor)
+        search_btn.setFont(QFont('Microsoft YaHei', 13))
+        search_btn.setFixedHeight(46)
+        search_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 0 24px;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+        """)
+
         refresh_btn = QPushButton('刷新')
         refresh_btn.clicked.connect(self.load_data)
-        
-        search_layout.addWidget(QLabel('货物类型:'))
+        refresh_btn.setCursor(Qt.PointingHandCursor)
+        refresh_btn.setFont(QFont('Microsoft YaHei', 13))
+        refresh_btn.setFixedHeight(46)
+        refresh_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #F5F5F5;
+                color: #616161;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+                padding: 0 24px;
+            }
+            QPushButton:hover {
+                background-color: #EEEEEE;
+            }
+        """)
+
+        search_layout.addWidget(type_label)
         search_layout.addWidget(self.type_filter)
-        search_layout.addWidget(QLabel('关键词:'))
+        search_layout.addWidget(keyword_label)
         search_layout.addWidget(self.search_input)
         search_layout.addWidget(search_btn)
         search_layout.addWidget(refresh_btn)
         search_layout.addStretch()
-        
+
+        search_card.setLayout(search_layout)
+        layout.addWidget(search_card)
+
         # ===== 操作按钮区域 =====
+        button_card = QFrame()
+        button_card.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+            }
+        """)
+
         button_layout = QHBoxLayout()
-        
-        # 新增按钮（所有角色都可使用）
+        button_layout.setContentsMargins(15, 12, 15, 12)
+        button_layout.setSpacing(10)
+
+        # 新增按钮
         add_btn = QPushButton('新增记录')
         add_btn.clicked.connect(self.add_record)
-        add_btn.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold; padding: 5px;")
-        
-        # 修改和删除按钮（根据权限控制）
+        add_btn.setCursor(Qt.PointingHandCursor)
+        add_btn.setFont(QFont('Microsoft YaHei', 13))
+        add_btn.setFixedHeight(46)
+        add_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 0 24px;
+            }
+            QPushButton:hover {
+                background-color: #45A049;
+            }
+            QPushButton:disabled {
+                background-color: #BDBDBD;
+            }
+        """)
+
+        # 修改按钮
         edit_btn = QPushButton('修改记录')
         edit_btn.clicked.connect(self.edit_record)
-        
+        edit_btn.setCursor(Qt.PointingHandCursor)
+        edit_btn.setFont(QFont('Microsoft YaHei', 13))
+        edit_btn.setFixedHeight(46)
+        edit_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #FF9800;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 0 24px;
+            }
+            QPushButton:hover {
+                background-color: #FB8C00;
+            }
+            QPushButton:disabled {
+                background-color: #BDBDBD;
+            }
+        """)
+
         delete_btn = QPushButton('删除记录')
         delete_btn.clicked.connect(self.delete_record)
-        
+        delete_btn.setCursor(Qt.PointingHandCursor)
+        delete_btn.setFont(QFont('Microsoft YaHei', 13))
+        delete_btn.setFixedHeight(46)
+        delete_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #F44336;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 0 24px;
+            }
+            QPushButton:hover {
+                background-color: #E53935;
+            }
+            QPushButton:disabled {
+                background-color: #BDBDBD;
+            }
+        """)
+
         # 根据用户角色控制按钮可用性
         if self.user_role == 'finance':
-            # 财务人员只能查看
             add_btn.setEnabled(True)
             edit_btn.setEnabled(True)
             delete_btn.setEnabled(True)
-
         elif self.user_role == 'operator':
-            # 操作员可以新增和修改，但不能删除
             delete_btn.setEnabled(False)
-        
+
         button_layout.addWidget(add_btn)
         button_layout.addWidget(edit_btn)
         button_layout.addWidget(delete_btn)
         button_layout.addStretch()
-        
-        # 组合搜索和按钮区域
-        top_layout = QVBoxLayout()
-        top_layout.addLayout(search_layout)
-        top_layout.addLayout(button_layout)
-        layout.addLayout(top_layout)
-        
-        # ===== 表格结构调整 =====
+
+        button_card.setLayout(button_layout)
+        layout.addWidget(button_card)
+
+        # ===== 表格区域 =====
+        table_card = QFrame()
+        table_card.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+            }
+        """)
+
+        table_layout = QVBoxLayout()
+        table_layout.setContentsMargins(15, 15, 15, 15)
+
         self.table = QTableWidget()
         self.table.setColumnCount(12)
         self.table.setHorizontalHeaderLabels([
-            'ID', '类型', '客户名称', '客户款号', 
-            '客户发货量', '工厂收货量', '收发差异', 
+            'ID', '类型', '客户名称', '客户款号',
+            '客户发货量', '工厂收货量', '收发差异',
             '工厂出货量', '客户收货量', '厂客差异',
             '最后更新', '操作人'
         ])
-        # 设置关键列宽度（差异列高亮）
+
+        # 表格样式美化
+        self.table.setStyleSheet("""
+            QTableWidget {
+                background-color: white;
+                border: none;
+                gridline-color: #E0E0E0;
+                font-size: 16px;
+            }
+            QTableWidget::item {
+                padding: 10px 8px;
+                border-bottom: 1px solid #F5F5F5;
+            }
+            QTableWidget::item:selected {
+                background-color: #E3F2FD;
+                color: #212121;
+            }
+            QTableWidget::item:hover {
+                background-color: #F5F5F5;
+            }
+            QHeaderView::section {
+                background-color: #FAFAFA;
+                color: #424242;
+                padding: 12px 8px;
+                border: none;
+                border-bottom: 2px solid #E0E0E0;
+                font-weight: bold;
+                font-size: 16px;
+            }
+        """)
+
+        # 设置列宽度 - 调整客户名称列
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.Stretch)  # 客户名称列自适应
-        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # 收发差异
-        header.setSectionResizeMode(9, QHeaderView.ResizeToContents)  # 厂客差异
-        header.setSectionResizeMode(10, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(0, QHeaderView.Fixed)
+        header.resizeSection(0, 60)  # ID列
+        header.setSectionResizeMode(1, QHeaderView.Fixed)
+        header.resizeSection(1, 70)  # 类型列
+        header.setSectionResizeMode(2, QHeaderView.Fixed)
+        header.resizeSection(2, 150)  # 客户名称列
+        header.setSectionResizeMode(3, QHeaderView.Fixed)
+        header.resizeSection(3, 130)  # 客户款号列
+        header.setSectionResizeMode(4, QHeaderView.Fixed)
+        header.resizeSection(4, 100)  # 客户发货量
+        header.setSectionResizeMode(5, QHeaderView.Fixed)
+        header.resizeSection(5, 100)  # 工厂收货量
+        header.setSectionResizeMode(6, QHeaderView.Fixed)
+        header.resizeSection(6, 90)  # 收发差异
+        header.setSectionResizeMode(7, QHeaderView.Fixed)
+        header.resizeSection(7, 100)  # 工厂出货量
+        header.setSectionResizeMode(8, QHeaderView.Fixed)
+        header.resizeSection(8, 100)  # 客户收货量
+        header.setSectionResizeMode(9, QHeaderView.Fixed)
+        header.resizeSection(9, 90)  # 厂客差异
+        header.setSectionResizeMode(10, QHeaderView.Stretch)  # 最后更新列自适应
+        header.setSectionResizeMode(11, QHeaderView.Fixed)
+        header.resizeSection(11, 90)  # 操作人
+
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setAlternatingRowColors(True)  # 交替行颜色，提高可读性
-        layout.addWidget(self.table)
-        
+        self.table.setAlternatingRowColors(True)
+
+        table_layout.addWidget(self.table)
+
         # 添加底部统计信息
         self.status_label = QLabel('')
-        self.status_label.setStyleSheet("color: #666; padding: 5px;")
-        layout.addWidget(self.status_label)
-        
+        self.status_label.setFont(QFont('Microsoft YaHei', 13))
+        self.status_label.setStyleSheet("""
+            color: #616161;
+            padding: 12px;
+            background-color: #FAFAFA;
+            border-radius: 4px;
+            margin-top: 10px;
+        """)
+        table_layout.addWidget(self.status_label)
+
+        table_card.setLayout(table_layout)
+        layout.addWidget(table_card)
+
         self.setLayout(layout)
         self.load_data()
-        
-        # 连接表格选择变化事件，更新状态信息
+
+        # 连接表格选择变化事件
         self.table.itemSelectionChanged.connect(self.update_status)
 
     def load_data(self):
@@ -198,7 +451,7 @@ class GoodsProcessingTab(QWidget):
                         diff_val = int(value) if value else 0
                         if diff_val < 0:
                             item.setForeground(QColor('red'))
-                            item.setFont(QFont('Arial', 10, QFont.Bold))
+                            item.setFont(QFont('Arial', 13, QFont.Bold))
                         elif diff_val > 0:
                             item.setForeground(QColor('green'))
                     except:
@@ -249,32 +502,32 @@ class GoodsProcessingTab(QWidget):
         """修改记录"""
         selected = self.table.selectedItems()
         if not selected:
-            QMessageBox.warning(self, '警告', '请先选择一条记录！')
+            show_styled_message(self, '警告', '请先选择一条记录！', QMessageBox.Warning)
             return
-        
+
         row = selected[0].row()
         record_id = int(self.table.item(row, 0).text())
-        
+
         dialog = GoodsProcessingDialog(self.db_manager, self.username, mode='edit', record_id=record_id)
         if dialog.exec_() == QDialog.Accepted:
             self.load_data()
-        
+
     def delete_record(self):
         """删除记录"""
         selected = self.table.selectedItems()
         if not selected:
-            QMessageBox.warning(self, '警告', '请先选择一条记录！')
+            show_styled_message(self, '警告', '请先选择一条记录！', QMessageBox.Warning)
             return
-        
+
         reply = QMessageBox.question(self, '确认', '确定要删除这条记录吗？',
                                      QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.Yes:
             row = selected[0].row()
             record_id = int(self.table.item(row, 0).text())
-            
+
             query = 'DELETE FROM goods_processing WHERE id=?'
             if self.db_manager.execute_query(query, (record_id,)):
-                QMessageBox.information(self, '成功', '记录已删除！')
+                show_styled_message(self, '成功', '记录已删除！', QMessageBox.Information)
                 self.load_data()
 
 
@@ -295,9 +548,60 @@ class GoodsProcessingDialog(QDialog):
     def init_ui(self):
         """初始化UI界面"""
         self.setWindowTitle('货物加工收发记录')
-        self.setFixedSize(900, 750)
-        
+        self.setFixedSize(950, 750)
+
+        # 设置对话框样式
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #FAFAFA;
+            }
+            QGroupBox {
+                background-color: white;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+                margin-top: 16px;
+                padding: 18px;
+                font-weight: bold;
+                font-size: 16px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                padding: 6px 12px;
+                color: #212121;
+            }
+            QLabel {
+                color: #424242;
+                font-size: 16px;
+            }
+            QLineEdit, QComboBox, QDateEdit {
+                background-color: #F5F5F5;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+                padding: 8px 12px;
+                font-size: 16px;
+            }
+            QLineEdit:hover, QComboBox:hover, QDateEdit:hover {
+                border: 1px solid #2196F3;
+            }
+            QLineEdit:focus, QComboBox:focus, QDateEdit:focus {
+                border: 1px solid #2196F3;
+                background-color: white;
+            }
+            QLineEdit:read-only {
+                background-color: #EEEEEE;
+                color: #F44336;
+                font-weight: bold;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+        """)
+
         main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(12)
         
         # ===== 货物类型选择 =====
         if self.mode == 'add':
@@ -312,18 +616,20 @@ class GoodsProcessingDialog(QDialog):
         # ===== 客户发货信息 =====
         send_group = QGroupBox('📦 客户发货信息')
         send_layout = QGridLayout()
-        
+
         self.customer_name = QLineEdit()
+        self.customer_style_no = QLineEdit()  # 客户款号输入框
         self.customer_send_date = QDateEdit()
         self.customer_send_date.setCalendarPopup(True)
         self.customer_send_date.setDate(QDate.currentDate())
         self.customer_send_method = QComboBox()
         self.customer_send_method.addItems(['快递', '物流', '自提', '其他'])
         self.customer_send_qty = QLineEdit()
-        
+
         send_layout.addWidget(QLabel('客户名称:'), 0, 0)
         send_layout.addWidget(self.customer_name, 0, 1)
         send_layout.addWidget(QLabel('客户款号:'), 0, 2)
+        send_layout.addWidget(self.customer_style_no, 0, 3)
         send_layout.addWidget(QLabel('发货时间:'), 1, 0)
         send_layout.addWidget(self.customer_send_date, 1, 1)
         send_layout.addWidget(QLabel('运输方式:'), 1, 2)
@@ -397,16 +703,48 @@ class GoodsProcessingDialog(QDialog):
         
         # ===== 按钮 =====
         btn_layout = QHBoxLayout()
+        btn_layout.setContentsMargins(0, 18, 0, 0)
         btn_layout.addStretch()
-        
+
         save_btn = QPushButton('保存')
+        save_btn.setFixedHeight(46)
+        save_btn.setCursor(Qt.PointingHandCursor)
+        save_btn.setFont(QFont('Microsoft YaHei', 14, QFont.Bold))
+        save_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 0 36px;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+        """)
         save_btn.clicked.connect(self.save)
+
         cancel_btn = QPushButton('取消')
+        cancel_btn.setFixedHeight(46)
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setFont(QFont('Microsoft YaHei', 14))
+        cancel_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #F5F5F5;
+                color: #616161;
+                border: 1px solid #E0E0E0;
+                border-radius: 4px;
+                padding: 0 36px;
+            }
+            QPushButton:hover {
+                background-color: #EEEEEE;
+            }
+        """)
         cancel_btn.clicked.connect(self.reject)
-        
+
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
-        
+
         main_layout.addLayout(btn_layout)
         self.setLayout(main_layout)
 
@@ -429,35 +767,36 @@ class GoodsProcessingDialog(QDialog):
     def load_data(self):
         """加载数据（编辑模式）"""
         query = '''
-            SELECT goods_type, customer_name, customer_send_date,
+            SELECT goods_type, customer_name, customer_style_no, customer_send_date,
                 customer_send_method, customer_send_qty, factory_receive_qty,
                 factory_send_date, factory_send_method, factory_send_qty,
                 customer_receive_qty, created_by
             FROM goods_processing_v2 WHERE id=?
         '''
         result = self.db_manager.fetch_one(query, (self.record_id,))
-        
+
         if result:
             # 设置货物类型（如果是织纱，标题显示织纱）
             if result[0] == '织纱':
                 self.setWindowTitle('货物加工收发记录 - 织纱')
-            
+
             self.customer_name.setText(result[1] or '')
-            
+            self.customer_style_no.setText(result[2] or '')  # 客户款号
+
             if result[3]:
                 self.customer_send_date.setDate(QDate.fromString(result[3], 'yyyy-MM-dd'))
-            
+
             self.customer_send_method.setCurrentText(result[4] or '快递')
             self.customer_send_qty.setText(str(result[5]) if result[5] else '')
             self.factory_receive_qty.setText(str(result[6]) if result[6] else '')
-            
+
             if result[7]:
                 self.factory_send_date.setDate(QDate.fromString(result[7], 'yyyy-MM-dd'))
-            
+
             self.factory_send_method.setCurrentText(result[8] or '快递')
             self.factory_send_qty.setText(str(result[9]) if result[9] else '')
             self.customer_receive_qty.setText(str(result[10]) if result[10] else '')
-            
+
             # 重新计算差异
             self._calculate_diffs()
 
@@ -465,43 +804,44 @@ class GoodsProcessingDialog(QDialog):
         """保存数据"""
         # 验证必填项
         if not self.customer_name.text().strip():
-            QMessageBox.warning(self, '警告', '客户名称不能为空！')
+            show_styled_message(self, '警告', '客户名称不能为空！', QMessageBox.Warning)
             return
-        
+
         if not self.customer_send_qty.text().strip():
-            QMessageBox.warning(self, '警告', '客户发货数量不能为空！')
+            show_styled_message(self, '警告', '客户发货数量不能为空！', QMessageBox.Warning)
             return
-        
+
         # 计算差异值
         try:
             customer_send_qty = int(self.customer_send_qty.text() or 0)
             factory_receive_qty = int(self.factory_receive_qty.text() or 0)
             factory_send_qty = int(self.factory_send_qty.text() or 0)
             customer_receive_qty = int(self.customer_receive_qty.text() or 0)
-            
+
             diff_receive = customer_send_qty - factory_receive_qty
             diff_factory_customer = factory_send_qty - customer_receive_qty
         except ValueError:
-            QMessageBox.warning(self, '错误', '数量必须是整数！')
+            show_styled_message(self, '错误', '数量必须是整数！', QMessageBox.Critical)
             return
-        
+
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
+
         if self.mode == 'add':
             # 插入新记录
             query = '''
                 INSERT INTO goods_processing_v2 (
-                    goods_type, customer_name, customer_send_date,
+                    goods_type, customer_name, customer_style_no, customer_send_date,
                     customer_send_method, customer_send_qty, factory_receive_qty, diff_receive,
                     factory_send_date, factory_send_method, factory_send_qty,
                     customer_receive_qty, diff_factory_customer,
                     created_by, created_date
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             '''
-            
+
             params = (
                 self.goods_type.currentText(),
                 self.customer_name.text().strip(),
+                self.customer_style_no.text().strip(),  # 客户款号
                 self.customer_send_date.date().toString('yyyy-MM-dd'),
                 self.customer_send_method.currentText(),
                 customer_send_qty,
@@ -526,7 +866,7 @@ class GoodsProcessingDialog(QDialog):
                     modified_by=?, modified_date=?
                 WHERE id=?
             '''
-            
+
             params = (
                 self.customer_name.text().strip(),
                 self.customer_send_date.date().toString('yyyy-MM-dd'),
@@ -543,9 +883,9 @@ class GoodsProcessingDialog(QDialog):
                 current_time,
                 self.record_id
             )
-        
+
         if self.db_manager.execute_query(query, params):
-            QMessageBox.information(self, '成功', '数据保存成功！')
+            show_styled_message(self, '成功', '数据保存成功！', QMessageBox.Information)
             self.accept()
         else:
-            QMessageBox.critical(self, '错误', '数据保存失败！')
+            show_styled_message(self, '错误', '数据保存失败！', QMessageBox.Critical)
