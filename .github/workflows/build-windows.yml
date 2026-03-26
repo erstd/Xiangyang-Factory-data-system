@@ -47,15 +47,19 @@ jobs:
       run: |
         mkdir release
         mkdir release\xiangyang-factory
+
+        # Copy backend
         copy dist\xiangyang-backend.exe release\xiangyang-factory\
         copy xiangyang_factory.db release\xiangyang-factory\
-        xcopy electron-app\dist-electron release\xiangyang-factory\ /E /I
+
+        # Copy electron app files
+        xcopy electron-app\dist-electron\win-unpacked release\xiangyang-factory\ /E /I
 
         echo @echo off > release\xiangyang-factory\start.bat
         echo echo 启动向阳厂管理系统... >> release\xiangyang-factory\start.bat
         echo start /B xiangyang-backend.exe >> release\xiangyang-factory\start.bat
         echo timeout /t 2 /nobreak ^>nul >> release\xiangyang-factory\start.bat
-        echo start "向阳厂管理系统" "向阳厂管理系统.exe" >> release\xiangyang-factory\start.bat
+        echo start "xiangyang-factory" "xiangyang-factory.exe" >> release\xiangyang-factory\start.bat
 
     - name: Create ZIP archive
       run: |

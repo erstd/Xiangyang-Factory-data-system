@@ -22,17 +22,25 @@
   },
   "build": {
     "appId": "com.xiangyang.factory",
-    "productName": "向阳厂管理系统",
+    "productName": "xiangyang-factory",
     "directories": {
       "output": "dist-electron"
     },
     "files": [
-      "dist/**/*",
       "main.js",
-      "preload.js"
+      "preload.js",
+      "pages/**/*",
+      "js/**/*",
+      "styles/**/*",
+      "src/**/*"
+    ],
+    "extraResources": [
+      "pages",
+      "js",
+      "styles"
     ],
     "win": {
-      "target": ["nsis"],
+      "target": ["dir"],
       "icon": "public/icon.ico"
     },
     "mac": {
