@@ -1,0 +1,94 @@
+package model
+
+import(
+	"gorm.io/gorm"
+	"time"
+)
+
+type User struct {
+	gorm.Model
+	Uuid     string     `json:"uuid" gorm:"type:varchar(150);not null;unique_index:idx_user_uuid;comment:'uuid'"`
+	Username string     `json:"username" form:"username" binding:"required" gorm:"unique;not null; comment:'用户名'"`
+	Password string     `json:"password" form:"password" binding:"required" gorm:"type:varchar(150);not null; comment:'密码'"`
+	Nickname string     `json:"nickname" gorm:"comment:'昵称'"`
+	Avatar   string     `json:"avatar" gorm:"type:varchar(255);comment:'头像'"`
+	Email    string     `json:"email" gorm:"type:varchar(80);column:email;comment:'邮箱'"`
+}
+
+type Group struct {
+	gorm.Model
+	Uuid    string `json:"uuid" gorm:"type:varchar(36);not null;uniqueIndex:idx_group_uuid;comment:'uuid'"`
+	OwnerId uint   `json:"userId" gorm:"index;comment:'群主ID'"`
+	Name    string `json:"name" gorm:"type:varchar(48);not null;comment:'群名称'"`
+	Notice  string `json:"notice" gorm:"type:varchar(350);comment:'群公告'"`
+	Avatar  string `json:"avatar" gorm:"type:varchar(255);comment:'群头像'"`
+}
+
+// GroupMember 群成员关系表
+type GroupMember struct {
+	gorm.Model
+	GroupId uint `gorm:"index;uniqueIndex:idx_group_member"`
+	UserId  uint `gorm:"index;uniqueIndex:idx_group_member"`
+	// 显式定义关联，方便 GORM Preload
+	MemberDetail User  `gorm:"foreignKey:UserId;references:ID"`
+	GroupDetail  Group `gorm:"foreignKey:GroupId;references:ID"`
+}
+
+
+type Message struct {
+	gorm.Model
+	Uuid      string `gorm:"type:varchar(36);not null;uniqueIndex"`
+	FromUser  string `gorm:"index;not null"` // 发送者 UUID
+	ToTarget  string `gorm:"index;not null"` // 接收者 UUID (用户UUID或群组UUID)
+	Content   string `gorm:"type:text"`      // 消息内容
+	MsgType   int    `gorm:"default:1"`      // 1:私聊, 2:群聊
+	IsRead    bool   `gorm:"default:false"`
+}
+
+type UserFriend struct {
+	gorm.Model
+	UserId   uint `json:"userId" gorm:"index;uniqueIndex:idx_user_friend;comment:'用户ID'"`
+	FriendId uint `json:"friendId" gorm:"index;uniqueIndex:idx_user_friend;comment:'好友ID'"`
+
+	// 显式定义关联，方便 GORM Preload
+	FriendDetail User `gorm:"foreignKey:FriendId;references:ID"`
+}
+
+type ResponseMsg struct {
+	Code int         `json:"code"`
+	Msg  string      `json:"msg"`
+	Data interface{} `json:"data"`
+}
+
+func SuccessMsg(data interface{}) *ResponseMsg {
+	msg := &ResponseMsg{
+		Code: 0,
+		Msg:  "SUCCESS",
+		Data: data,
+	}
+	return msg
+}
+
+func FailMsg(msg string) *ResponseMsg {
+	msgObj := &ResponseMsg{
+		Code: -1,
+		Msg:  msg,
+	}
+	return msgObj
+}
+
+func FailCodeMsg(code int, msg string) *ResponseMsg {
+	msgObj := &ResponseMsg{
+		Code: code,
+		Msg:  msg,
+	}
+	return msgObj
+}
+
+func (u *User) BeforeUpdate(tx *gorm.DB) error {
+	tx.Statement.SetColumn("UpdatedAt", time.Now())
+	return nil
+}
+
+
+

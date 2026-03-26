@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>向阳厂管理系统</title>
+  <link rel="stylesheet" href="../styles/common.css">
+  <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+  <div class="main-container">
+    <!-- 顶部工具栏 -->
+    <div class="header">
+      <div class="header-left">
+        <span class="logo">🏭</span>
+        <span class="app-name">向阳厂管理系统</span>
+      </div>
+      <div class="header-right">
+        <span class="user-info" id="userInfo"></span>
+        <button class="btn btn-primary" onclick="handleRefresh()">刷新</button>
+        <button class="btn" onclick="handleLogout()">退出</button>
+      </div>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div class="content">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="goods">📦 货品加工收发</button>
+        <button class="tab-btn" data-tab="wage">💰 工资核算</button>
+        <button class="tab-btn" data-tab="customer" id="customerTab" style="display:none">🤝 客户结算</button>
+        <button class="tab-btn" data-tab="profit" id="profitTab" style="display:none">📊 利润核算</button>
+      </div>
+
+      <div class="tab-content">
+        <div id="goods-tab" class="tab-pane active">
+          <iframe src="goods.html" frameborder="0"></iframe>
+        </div>
+        <div id="wage-tab" class="tab-pane">
+          <iframe src="wage.html" frameborder="0"></iframe>
+        </div>
+        <div id="customer-tab" class="tab-pane">
+          <div class="placeholder">客户结算功能开发中...</div>
+        </div>
+        <div id="profit-tab" class="tab-pane">
+          <div class="placeholder">利润核算功能开发中...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部状态栏 -->
+    <div class="footer">
+      <span id="currentTime"></span>
+      <span class="status">● 数据库正常</span>
+    </div>
+  </div>
+
+  <script src="../js/main.js"></script>
+</body>
+</html>

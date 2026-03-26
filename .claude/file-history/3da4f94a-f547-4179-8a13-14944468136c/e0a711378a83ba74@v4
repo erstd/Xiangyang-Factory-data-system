@@ -1,0 +1,47 @@
+package kafka
+
+import (
+	"chatapp/backend/log"
+	"sync"
+)
+
+type ConsumerCallback func(data []byte)
+
+var (
+	consumerMu       sync.RWMutex
+	consumerCallback ConsumerCallback
+)
+
+func InitConsumer(hosts []string) {
+	log.Logger.Info("init kafka consumer (in-memory fallback)", log.Any("hosts", hosts))
+
+	// get callback once at initialization
+	consumerMu.RLock()
+	callback := consumerCallback
+	consumerMu.RUnlock()
+
+	if callback == nil {
+		log.Logger.Error("kafka consumer callback is nil, consumer not started")
+		return
+	}
+
+	// start consumer goroutine to process messages from queue
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Logger.Error("consumer goroutine panicked", log.Any("recover", r))
+			}
+		}()
+
+		for msg := range KafkaMessageQueue() {
+			callback(msg)
+		}
+	}()
+}
+
+func InitConsumerCallback(callback ConsumerCallback) {
+	consumerMu.Lock()
+	consumerCallback = callback
+	consumerMu.Unlock()
+	log.Logger.Info("kafka consumer callback registered")
+}

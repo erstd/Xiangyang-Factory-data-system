@@ -1,0 +1,277 @@
+"""
+多源文献检索服务
+集成 arXiv, PubMed, Semantic Scholar 等
+"""
+import requests
+import xml.etree.ElementTree as ET
+from langchain.tools import Tool
+from typing import List, Dict, Any, Optional
+
+
+class LiteratureSearchService:
+    """文献检索服务类"""
+
+    def __init__(self, api_keys: Optional[Dict[str, str]] = None):
+        """
+        初始化文献检索服务
+
+        Args:
+            api_keys: 各数据源的 API 密钥
+        """
+        self.api_keys = api_keys or {}
+        self.sources = ['arxiv', 'pubmed', 'semantic_scholar']
+
+        # arXiv 配置
+        self.arxiv_base_url = "http://export.arxiv.org/api/query"
+
+        # PubMed 配置
+        self.pubmed_base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+
+        # Semantic Scholar 配置
+        self.semantic_scholar_base_url = "https://api.semanticscholar.org/graph/v1/paper/search"
+
+    def search_arxiv(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        搜索 arXiv 论文
+
+        Args:
+            query: 搜索关键词
+            limit: 返回结果数量
+
+        Returns:
+            论文列表
+        """
+        results = []
+        params = {
+            'search_query': f'all:{query}',
+            'start': 0,
+            'max_results': limit,
+            'sortBy': 'relevance',
+            'sortOrder': 'descending'
+        }
+
+        try:
+            response = requests.get(self.arxiv_base_url, params=params, timeout=30)
+            response.raise_for_status()
+
+            root = ET.fromstring(response.content)
+            ns = {'atom': 'http://www.w3.org/2005/Atom', 'arxiv': 'http://arxiv.org/schemas/1.0'}
+
+            for entry in root.findall('atom:entry', ns):
+                paper = {}
+
+                # 获取标题
+                title_elem = entry.find('atom:title', ns)
+                paper['title'] = title_elem.text.strip() if title_elem is not None and title_elem.text else ''
+
+                # 获取摘要
+                summary_elem = entry.find('atom:summary', ns)
+                paper['abstract'] = summary_elem.text.strip() if summary_elem is not None and summary_elem.text else ''
+
+                # 获取作者
+                authors = []
+                for author_elem in entry.findall('atom:author', ns):
+                    name_elem = author_elem.find('atom:name', ns)
+                    if name_elem is not None:
+                        authors.append(name_elem.text)
+                paper['authors'] = authors
+
+                # 获取发布日期
+                published_elem = entry.find('atom:published', ns)
+                paper['published_date'] = published_elem.text if published_elem is not None else ''
+
+                # 获取 arXiv ID 和链接
+                id_elem = entry.find('atom:id', ns)
+                arxiv_id = id_elem.text if id_elem is not None else ''
+                paper['arxiv_id'] = arxiv_id
+                paper['url'] = arxiv_id.replace('http://arxiv.org/abs/', 'https://arxiv.org/abs/') if arxiv_id else ''
+
+                # 获取分类
+                categories = []
+                for category_elem in entry.findall('atom:category', ns):
+                    term = category_elem.get('term')
+                    if term:
+                        categories.append(term)
+                paper['categories'] = categories
+
+                paper['source'] = 'arxiv'
+                results.append(paper)
+
+        except requests.RequestException as e:
+            print(f"arXiv search error: {e}")
+        except ET.ParseError as e:
+            print(f"arXiv XML parse error: {e}")
+
+        return results
+
+    def search_pubmed(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        搜索 PubMed 论文
+
+        Args:
+            query: 搜索关键词
+            limit: 返回结果数量
+
+        Returns:
+            论文列表
+        """
+        results = []
+
+        try:
+            # 第一步：搜索获取 ID 列表
+            search_params = {
+                'db': 'pubmed',
+                'term': query,
+                'retmax': limit,
+                'retmode': 'json'
+            }
+
+            search_response = requests.get(
+                f"{self.pubmed_base_url}esearch.fcgi",
+                params=search_params,
+                timeout=30
+            )
+            search_response.raise_for_status()
+            search_data = search_response.json()
+
+            id_list = search_data.get('esearchresult', {}).get('idlist', [])
+
+            if not id_list:
+                return results
+
+            # 第二步：获取详细信息
+            fetch_params = {
+                'db': 'pubmed',
+                'id': ','.join(id_list),
+                'retmode': 'json'
+            }
+
+            fetch_response = requests.get(
+                f"{self.pubmed_base_url}esummary.fcgi",
+                params=fetch_params,
+                timeout=30
+            )
+            fetch_response.raise_for_status()
+            fetch_data = fetch_response.json()
+
+            result_list = fetch_data.get('result', [])
+
+            for item in result_list:
+                if isinstance(item, dict) and item.get('uid'):
+                    paper = {
+                        'title': item.get('title', ''),
+                        'abstract': '',  # esummary 不包含完整摘要
+                        'authors': [author.get('name', '') for author in item.get('authors', [])],
+                        'published_date': item.get('pubdate', ''),
+                        'pubmed_id': item.get('uid', ''),
+                        'url': f"https://pubmed.ncbi.nlm.nih.gov/{item.get('uid', '')}/",
+                        'source': 'pubmed',
+                        'journal': item.get('fulljournalname', ''),
+                        'doi': item.get('doi', '')
+                    }
+                    results.append(paper)
+
+        except requests.RequestException as e:
+            print(f"PubMed search error: {e}")
+        except ValueError as e:
+            print(f"PubMed JSON parse error: {e}")
+
+        return results
+
+    def search_semantic_scholar(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        搜索 Semantic Scholar 论文
+
+        Args:
+            query: 搜索关键词
+            limit: 返回结果数量
+
+        Returns:
+            论文列表
+        """
+        results = []
+
+        params = {
+            'query': query,
+            'limit': limit,
+            'fields': 'title,authors,year,abstract,citationCount,url,doi,venue,publicationDate'
+        }
+
+        headers = {}
+        if self.api_keys.get('semantic_scholar'):
+            headers['x-api-key'] = self.api_keys['semantic_scholar']
+
+        try:
+            response = requests.get(
+                self.semantic_scholar_base_url,
+                params=params,
+                headers=headers,
+                timeout=30
+            )
+            response.raise_for_status()
+
+            data = response.json()
+            papers = data.get('data', [])
+
+            for paper_data in papers:
+                paper = {
+                    'title': paper_data.get('title', ''),
+                    'abstract': paper_data.get('abstract', ''),
+                    'authors': [author.get('name', '') for author in paper_data.get('authors', [])],
+                    'year': paper_data.get('year', ''),
+                    'published_date': paper_data.get('publicationDate', ''),
+                    'citation_count': paper_data.get('citationCount', 0),
+                    'url': paper_data.get('url', ''),
+                    'doi': paper_data.get('doi', ''),
+                    'venue': paper_data.get('venue', ''),
+                    'source': 'semantic_scholar'
+                }
+                results.append(paper)
+
+        except requests.RequestException as e:
+            print(f"Semantic Scholar search error: {e}")
+        except ValueError as e:
+            print(f"Semantic Scholar JSON parse error: {e}")
+
+        return results
+
+    def multi_source_search(self, query: str, sources: Optional[List[str]] = None, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        多源文献检索
+
+        Args:
+            query: 搜索关键词
+            sources: 指定的数据源列表，默认全部
+            limit: 每个源返回结果数量
+
+        Returns:
+            合并后的论文列表
+        """
+        if sources is None:
+            sources = self.sources
+
+        results = []
+        for source in sources:
+            if source == 'arxiv':
+                results.extend(self.search_arxiv(query, limit))
+            elif source == 'pubmed':
+                results.extend(self.search_pubmed(query, limit))
+            elif source == 'semantic_scholar':
+                results.extend(self.search_semantic_scholar(query, limit))
+
+        return results
+
+    def get_search_tool(self) -> Tool:
+        """
+        获取 LangChain 工具
+
+        Returns:
+            LangChain Tool 对象
+        """
+        return Tool(
+            name="literature_search",
+            func=self.multi_source_search,
+            description="Search academic papers from multiple sources (arXiv, PubMed, Semantic Scholar). "
+                        "Input should be a search query string. Returns a list of papers with title, "
+                        "abstract, authors, and other metadata."
+        )

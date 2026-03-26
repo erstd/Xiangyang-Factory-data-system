@@ -1,0 +1,60 @@
+package main
+
+import (
+	"chatapp/backend/cache"
+	"chatapp/backend/config"
+	"chatapp/backend/datapool"
+	"chatapp/backend/kafka"
+	"chatapp/backend/log"
+	"chatapp/backend/router"
+	"chatapp/backend/server"
+	"net/http"
+	"time"
+)
+
+func main() {
+	log.InitLogger(config.GetLogConfig().Path, config.GetLogConfig().Level)
+	datapool.Init()
+	cache.Init()
+	defer func() {
+		if err := cache.Close(); err != nil {
+			log.Logger.Warn("close redis failed", log.Any("error", err))
+		}
+	}()
+
+	log.Logger.Info("config", log.Any("logConfig", config.GetLogConfig()))
+	log.Logger.Info("chatConfig",
+		log.String("httpAddr", config.GetConfig().HttpAddr),
+		log.String("msgChannel", config.GetConfig().Msg_trans_channel),
+		log.Any("redisEnabled", config.GetConfig().RedisEnabled),
+		log.String("redisAddr", config.GetConfig().RedisAddr),
+		log.Int("redisDB", config.GetConfig().RedisDB),
+		log.Any("llmEnabled", config.GetConfig().LLMEnabled),
+		log.String("llmApiBase", config.GetConfig().LLMAPIBase),
+		log.String("llmModel", config.GetConfig().LLMModel),
+	)
+
+	if config.GetConfig().Msg_trans_channel == config.KAFKA {
+		kafka.InitProducer("", nil)
+		kafka.InitConsumerCallback(server.ConsumerKafkaMsg)
+		kafka.InitConsumer(nil)
+	}
+
+	log.Logger.Info("start server", log.String("start", "start web sever..."))
+
+	newRouter := router.NewRouter()
+
+	go server.AppServer.Start()
+
+	s := &http.Server{
+		Addr:           config.GetConfig().HttpAddr,
+		Handler:        newRouter,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+	err := s.ListenAndServe()
+	if nil != err {
+		log.Logger.Error("server error", log.Any("serverError", err))
+	}
+}

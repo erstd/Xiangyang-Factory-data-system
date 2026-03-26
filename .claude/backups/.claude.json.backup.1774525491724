@@ -1,0 +1,170 @@
+{
+  "numStartups": 12,
+  "tipsHistory": {
+    "new-user-warmup": 7,
+    "plan-mode-for-complex-tasks": 11,
+    "memory-command": 1,
+    "theme-command": 1,
+    "status-line": 1,
+    "prompt-queue": 11,
+    "enter-to-steer-in-relatime": 1,
+    "todo-list": 1,
+    "install-github-app": 12,
+    "install-slack-app": 12,
+    "drag-and-drop-images": 2,
+    "double-esc-code-restore": 2,
+    "continue": 3,
+    "shift-tab": 3,
+    "image-paste": 3,
+    "desktop-app": 3,
+    "shift-enter": 4,
+    "web-app": 4,
+    "mobile-app": 4,
+    "custom-agents": 6,
+    "agent-flag": 6,
+    "feedback-command": 6,
+    "frontend-design-plugin": 10,
+    "color-when-multi-clauding": 11,
+    "permissions": 11,
+    "rename-conversation": 11,
+    "custom-commands": 11
+  },
+  "promptQueueUseCount": 2,
+  "firstStartTime": "2026-03-03T13:17:48.495Z",
+  "opusProMigrationComplete": true,
+  "sonnet1m45MigrationComplete": true,
+  "userID": "d8ba97c2d420fdf5cd69787121d5ea5df996f332cbf20480c10850677c8ad964",
+  "toolUsage": {
+    "Read": {
+      "usageCount": 8,
+      "lastUsedAt": 1772597459164
+    },
+    "Glob": {
+      "usageCount": 4,
+      "lastUsedAt": 1772597038094
+    },
+    "Grep": {
+      "usageCount": 13,
+      "lastUsedAt": 1772597469790
+    },
+    "Edit": {
+      "usageCount": 1,
+      "lastUsedAt": 1772609816262
+    }
+  },
+  "clientDataCache": {
+    "data": null,
+    "timestamp": 1772768221426
+  },
+  "changelogLastFetched": 1774349750634,
+  "shiftEnterKeyBindingInstalled": true,
+  "hasCompletedOnboarding": true,
+  "lastOnboardingVersion": "2.1.81",
+  "projects": {
+    "/home/erstd/.claude": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 1,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "hasClaudeMdExternalIncludesWarningShown": false,
+      "lastCost": 0.053236649999999996,
+      "lastAPIDuration": 5875,
+      "lastAPIDurationWithoutRetries": 5856,
+      "lastToolDuration": 0,
+      "lastDuration": 1095207,
+      "lastLinesAdded": 0,
+      "lastLinesRemoved": 0,
+      "lastTotalInputTokens": 206,
+      "lastTotalOutputTokens": 131,
+      "lastTotalCacheCreationInputTokens": 12863,
+      "lastTotalCacheReadInputTokens": 10098,
+      "lastTotalWebSearchRequests": 0,
+      "lastFpsAverage": 0.11,
+      "lastFpsLow1Pct": 94.76,
+      "lastModelUsage": {
+        "claude-haiku-4-5-20251001": {
+          "inputTokens": 196,
+          "outputTokens": 22,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0,
+          "webSearchRequests": 0,
+          "costUSD": 0.00030599999999999996
+        },
+        "claude-sonnet-4-5-20250929": {
+          "inputTokens": 10,
+          "outputTokens": 109,
+          "cacheReadInputTokens": 10098,
+          "cacheCreationInputTokens": 12863,
+          "webSearchRequests": 0,
+          "costUSD": 0.052930649999999996
+        }
+      },
+      "lastSessionId": "256a911b-40a6-4346-9de3-71d39333062b",
+      "lastSessionMetrics": {
+        "frame_duration_ms_count": 125,
+        "frame_duration_ms_min": 0.06782199814915657,
+        "frame_duration_ms_max": 40.64181400090456,
+        "frame_duration_ms_avg": 1.1015499037206173,
+        "frame_duration_ms_p50": 0.45694999769330025,
+        "frame_duration_ms_p95": 2.914122600108383,
+        "frame_duration_ms_p99": 9.420683401674056
+      }
+    },
+    "/home/erstd/projects/xiangyang": {
+      "allowedTools": [],
+      "mcpContextUris": [],
+      "mcpServers": {},
+      "enabledMcpjsonServers": [],
+      "disabledMcpjsonServers": [],
+      "hasTrustDialogAccepted": true,
+      "projectOnboardingSeenCount": 0,
+      "hasClaudeMdExternalIncludesApproved": false,
+      "hasClaudeMdExternalIncludesWarningShown": false,
+      "lastCost": 0,
+      "lastAPIDuration": 0,
+      "lastAPIDurationWithoutRetries": 0,
+      "lastToolDuration": 0,
+      "lastDuration": 6727,
+      "lastLinesAdded": 0,
+      "lastLinesRemoved": 0,
+      "lastTotalInputTokens": 0,
+      "lastTotalOutputTokens": 0,
+      "lastTotalCacheCreationInputTokens": 0,
+      "lastTotalCacheReadInputTokens": 0,
+      "lastTotalWebSearchRequests": 0,
+      "lastFpsAverage": 2.22,
+      "lastFpsLow1Pct": 92.17,
+      "lastModelUsage": {},
+      "lastSessionId": "284a132f-1373-4930-b0b7-57c9ac7e06f1",
+      "lastSessionMetrics": {
+        "frame_duration_ms_count": 8,
+        "frame_duration_ms_min": 0.09320899983868003,
+        "frame_duration_ms_max": 10.849057999905199,
+        "frame_duration_ms_avg": 2.3118049999466166,
+        "frame_duration_ms_p50": 1.4117990001104772,
+        "frame_duration_ms_p95": 7.8932498998474285,
+        "frame_duration_ms_p99": 10.257896379893644
+      }
+    }
+  },
+  "opus1mMergeNoticeSeenCount": 6,
+  "lastReleaseNotesSeen": "2.1.81",
+  "officialMarketplaceAutoInstallAttempted": true,
+  "officialMarketplaceAutoInstalled": true,
+  "skillUsage": {
+    "init": {
+      "usageCount": 1,
+      "lastUsedAt": 1774349840354
+    }
+  },
+  "githubRepoPaths": {
+    "erstd/xiangyang-factory-data-system": [
+      "/home/erstd/projects/xiangyang"
+    ]
+  },
+  "showSpinnerTree": false
+}

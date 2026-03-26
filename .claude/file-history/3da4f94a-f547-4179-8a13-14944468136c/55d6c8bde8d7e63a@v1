@@ -1,0 +1,116 @@
+package config
+
+import (
+	"os"
+	"strings"
+)
+
+type ChatConfig struct {
+	// 消息是通过内存 channel 还是 kafka 传输
+	Msg_trans_channel string
+	// HTTP 服务监听地址，例如 :8081
+	HttpAddr string
+	// Redis 配置
+	RedisEnabled            bool
+	RedisAddr               string
+	RedisPassword           string
+	RedisDB                 int
+	RedisKeyPrefix          string
+	RedisOnlineTTLSeconds   int
+	RedisLoginWindowSeconds int
+	RedisLoginMaxAttempts   int
+	LLMEnabled        bool
+	LLMAPIBase        string
+	LLMAPIKey         string
+	LLMModel          string
+	LLMTimeoutSeconds int
+	LLMSystemPrompt   string
+}
+
+type LogConfig struct {
+	Path  string
+	Level string
+}
+
+const (
+	HEAT_BEAT = "heatbeat"
+	PONG      = "pong"
+
+	// 消息类型，单聊或者群聊
+	MESSAGE_TYPE_USER  = 1
+	MESSAGE_TYPE_GROUP = 2
+
+	// 消息内容类型
+	TEXT         = 1
+	FILE         = 2
+	IMAGE        = 3
+	AUDIO        = 4
+	VIDEO        = 5
+	AUDIO_ONLINE = 6
+	VIDEO_ONLINE = 7
+
+	// 消息队列类型
+	GO_CHANNEL = "gochannel"
+	KAFKA      = "kafka"
+)
+
+func getEnvOrDefault(key, fallback string) string {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	return value
+}
+
+func getEnvOrDefaultBool(key string, fallback bool) bool {
+	value := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
+	if value == "" {
+		return fallback
+	}
+	switch value {
+	case "1", "true", "yes", "y", "on":
+		return true
+	case "0", "false", "no", "n", "off":
+		return false
+	default:
+		return fallback
+	}
+}
+
+func envRedisEnabled() bool {
+	redisAddr := strings.TrimSpace(os.Getenv("CHATAPP_REDIS_ADDR"))
+	return getEnvOrDefaultBool("CHATAPP_REDIS_ENABLED", redisAddr != "")
+}
+
+var cfg = &ChatConfig{
+	// 默认使用 go channel，避免 kafka 未初始化导致消息丢失
+	Msg_trans_channel: strings.ToLower(getEnvOrDefault("CHATAPP_MSG_CHANNEL", GO_CHANNEL)),
+	HttpAddr:          getEnvOrDefault("CHATAPP_HTTP_ADDR", ":8081"),
+	RedisEnabled:      envRedisEnabled(),
+	RedisAddr:         getEnvOrDefault("CHATAPP_REDIS_ADDR", "127.0.0.1:6379"),
+	RedisPassword:     getEnvOrDefault("CHATAPP_REDIS_PASSWORD", ""),
+	RedisDB:           getEnvOrDefaultInt("CHATAPP_REDIS_DB", 0),
+	RedisKeyPrefix:    getEnvOrDefault("CHATAPP_REDIS_KEY_PREFIX", "chatapp:"),
+	RedisOnlineTTLSeconds:   getEnvOrDefaultInt("CHATAPP_REDIS_ONLINE_TTL_SECONDS", 90),
+	RedisLoginWindowSeconds: getEnvOrDefaultInt("CHATAPP_REDIS_LOGIN_WINDOW_SECONDS", 60),
+	RedisLoginMaxAttempts:   getEnvOrDefaultInt("CHATAPP_REDIS_LOGIN_MAX_ATTEMPTS", 8),
+	LLMEnabled:              true,
+	LLMAPIBase:              getEnvOrDefault("CHATAPP_LLM_API_BASE", "https://coding.dashscope.aliyuncs.com/v1"),
+	LLMAPIKey:               "sk-sp-67e852e8738249609e6960ba14121f44",
+	LLMModel:                getEnvOrDefault("CHATAPP_LLM_MODEL", "qwen3.5-plus"),
+	LLMTimeoutSeconds:       getEnvOrDefaultInt("CHATAPP_LLM_TIMEOUT_SECONDS", 300),
+	LLMSystemPrompt:         getEnvOrDefault("CHATAPP_LLM_SYSTEM_PROMPT", "You are a helpful assistant."),
+}
+
+var logCfg = &LogConfig{
+	Path:  getEnvOrDefault("CHATAPP_LOG_PATH", "logs/chatapp.log"),
+	Level: getEnvOrDefault("CHATAPP_LOG_LEVEL", "debug"),
+}
+
+func GetConfig() *ChatConfig {
+	return cfg
+}
+
+func GetLogConfig() *LogConfig {
+	return logCfg
+}

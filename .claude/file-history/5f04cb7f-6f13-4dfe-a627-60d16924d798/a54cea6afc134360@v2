@@ -1,0 +1,125 @@
+const API_BASE = 'http://localhost:8000';
+const user = JSON.parse(localStorage.getItem('user') || 'null');
+
+let tableData = [];
+
+// 页面加载时获取数据
+window.addEventListener('load', () => {
+  loadData();
+  checkPermissions();
+});
+
+// 检查权限
+function checkPermissions() {
+  const addBtn = document.getElementById('addBtn');
+  if (user.role !== 'finance') {
+    addBtn.style.display = 'none';
+  }
+}
+
+// 加载数据
+async function loadData() {
+  try {
+    const response = await fetch(`${API_BASE}/wages`, {
+      headers: {
+        'Authorization': `Bearer ${user.token}`
+      }
+    });
+
+    if (response.ok) {
+      tableData = await response.json();
+      renderTable();
+    } else {
+      alert('加载数据失败');
+    }
+  } catch (error) {
+    console.error('加载数据错误:', error);
+    alert('加载数据失败');
+  }
+}
+
+// 渲染表格
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  tableData.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${row.id}</td>
+      <td>${row.workshop_name}</td>
+      <td style="text-align:right">${row.knitting_qty || 0}</td>
+      <td style="text-align:right">¥${(row.knitting_wage || 0).toFixed(2)}</td>
+      <td>${row.overlock_goods_type || ''}</td>
+      <td style="text-align:right">¥${(row.overlock_wage || 0).toFixed(2)}</td>
+      <td>${row.hand_sewing_goods_type || ''}</td>
+      <td style="text-align:right">¥${(row.hand_sewing_wage || 0).toFixed(2)}</td>
+      <td>${row.created_by || ''}</td>
+      <td>${row.created_date || ''}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// 新增
+function handleAdd() {
+  resetForm();
+  document.getElementById('dialog').classList.add('show');
+}
+
+// 提交表单
+async function handleSubmit() {
+  const form = document.getElementById('wageForm');
+  if (!form.checkValidity()) {
+    form.reportValidity();
+    return;
+  }
+
+  const data = {
+    workshop_name: document.getElementById('workshopName').value,
+    processing_date: document.getElementById('processingDate').value,
+    knitting_qty: parseInt(document.getElementById('knittingQty').value) || 0,
+    knitting_wage: parseFloat(document.getElementById('knittingWage').value) || 0,
+    overlock_goods_type: document.getElementById('overlockGoodsType').value,
+    overlock_wage: parseFloat(document.getElementById('overlockWage').value) || 0,
+    hand_sewing_goods_type: document.getElementById('handSewingGoodsType').value,
+    hand_sewing_wage: parseFloat(document.getElementById('handSewingWage').value) || 0
+  };
+
+  try {
+    const response = await fetch(`${API_BASE}/wages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${user.token}`
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (response.ok) {
+      alert('添加成功');
+      closeDialog();
+      loadData();
+    } else {
+      alert('保存失败');
+    }
+  } catch (error) {
+    console.error('保存错误:', error);
+    alert('保存失败');
+  }
+}
+
+// 关闭对话框
+function closeDialog() {
+  document.getElementById('dialog').classList.remove('show');
+  resetForm();
+}
+
+// 重置表单
+function resetForm() {
+  document.getElementById('wageForm').reset();
+  document.getElementById('knittingQty').value = 0;
+  document.getElementById('knittingWage').value = 0;
+  document.getElementById('overlockWage').value = 0;
+  document.getElementById('handSewingWage').value = 0;
+}

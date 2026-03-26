@@ -1,0 +1,22 @@
+2026-03-03T13:17:48.195Z [DEBUG] [Query.streamInput] Starting to process input stream
+2026-03-03T13:17:48.196Z [DEBUG] [Query.streamInput] Finished processing 0 messages from input stream
+2026-03-03T13:17:48.196Z [DEBUG] [Query] Calling transport.endInput() to close stdin to CLI process
+2026-03-03T13:17:48.232Z [DEBUG] [Query.streamInput] Starting to process input stream
+2026-03-03T13:20:41.006Z [DEBUG] [Query.streamInput] Finished processing 0 messages from input stream
+2026-03-03T13:20:41.006Z [DEBUG] [Query] Calling transport.endInput() to close stdin to CLI process
+2026-03-03T13:20:42.202Z [DEBUG] [Query.streamInput] Starting to process input stream
+2026-03-03T13:20:42.202Z [DEBUG] [Query.streamInput] Finished processing 0 messages from input stream
+2026-03-03T13:20:42.202Z [DEBUG] [Query] Calling transport.endInput() to close stdin to CLI process
+2026-03-03T13:20:42.220Z [DEBUG] [Query.streamInput] Starting to process input stream
+2026-03-03T13:20:46.096Z [DEBUG] [Query.streamInput] Finished processing 0 messages from input stream
+2026-03-03T13:20:46.096Z [DEBUG] [Query] Calling transport.endInput() to close stdin to CLI process
+2026-03-03T13:20:46.862Z [DEBUG] [Query.streamInput] Starting to process input stream
+2026-03-03T13:20:46.862Z [DEBUG] [Query.streamInput] Finished processing 0 messages from input stream
+2026-03-03T13:20:46.862Z [DEBUG] [Query] Calling transport.endInput() to close stdin to CLI process
+2026-03-03T13:20:46.884Z [DEBUG] [Query.streamInput] Starting to process input stream
+2026-03-03T13:20:49.482Z [DEBUG] [Query.streamInput] Finished processing 0 messages from input stream
+2026-03-03T13:20:49.482Z [DEBUG] [Query] Calling transport.endInput() to close stdin to CLI process
+2026-03-03T13:20:50.536Z [DEBUG] [Query.streamInput] Starting to process input stream
+2026-03-03T13:20:50.536Z [DEBUG] [Query.streamInput] Finished processing 0 messages from input stream
+2026-03-03T13:20:50.536Z [DEBUG] [Query] Calling transport.endInput() to close stdin to CLI process
+2026-03-03T13:20:50.558Z [DEBUG] [Query.streamInput] Starting to process input stream

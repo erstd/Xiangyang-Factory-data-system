@@ -1,0 +1,716 @@
+# -*- coding: utf-8 -*-
+"""
+向阳厂数据管理系统
+权限等级：
+1. 一线工厂 - 数据录入权限
+2. 财务 - 数据核查与修改权限
+"""
+
+import sys
+import sqlite3
+from datetime import datetime
+import os
+from data import DatabaseManager, get_database_path
+from goodsprocess import GoodsProcessingTab, GoodsProcessingDialog
+from wage import WageCalculationDialog, WageCalculationTab
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem,
+    QMessageBox, QDialog, QTabWidget, QComboBox, QDateEdit, QHeaderView,
+    QTextEdit, QGridLayout, QGroupBox, QSplitter, QFileDialog, QFrame, QCheckBox, QStatusBar, QGraphicsDropShadowEffect
+)
+from PyQt5.QtCore import Qt, QDate
+from PyQt5.QtGui import QFont, QColor
+
+class LoginDialog(QDialog):
+    """登录对话框 - 优化版"""
+
+    def __init__(self, db_manager):
+        super().__init__()
+        self.db_manager = db_manager
+        self.user_role = None
+        self.username = None
+        self.setWindowFlags(Qt.FramelessWindowHint)  # 去掉默认标题栏
+        self.setAttribute(Qt.WA_TranslucentBackground)  # 透明背景
+        self.init_ui()
+    
+    def mousePressEvent(self, event):
+        """实现窗口拖动"""
+        if event.button() == Qt.LeftButton:
+            self.drag_position = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+    
+    def mouseMoveEvent(self, event):
+        """实现窗口拖动"""
+        if event.buttons() == Qt.LeftButton:
+            self.move(event.globalPos() - self.drag_position)
+            event.accept()
+
+    def init_ui(self):
+        self.setFixedSize(480, 600)
+        
+        # 主布局
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # 创建主容器（带圆角和阴影）
+        container = QWidget()
+        container.setObjectName("container")
+        container.setStyleSheet("""
+            QWidget#container {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #2c3e50, stop:0.5 #34495e, stop:1 #2c3e50);
+                border-radius: 20px;
+            }
+        """)
+        
+        # 添加阴影效果
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(30)
+        shadow.setColor(QColor(0, 0, 0, 100))
+        shadow.setOffset(0, 5)
+        container.setGraphicsEffect(shadow)
+        
+        container_layout = QVBoxLayout()
+        container_layout.setContentsMargins(30, 30, 30, 30)
+        container_layout.setSpacing(20)
+
+        # ========== 顶部装饰区域 ==========
+        top_widget = QWidget()
+        top_layout = QVBoxLayout()
+        top_layout.setContentsMargins(0, 10, 0, 20)
+        top_layout.setSpacing(15)
+
+        # 装饰性图标（工厂轮廓）
+        icon_widget = QWidget()
+        icon_widget.setFixedSize(100, 100)
+        icon_widget.setStyleSheet("""
+            QWidget {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #3498db, stop:1 #2980b9);
+                border-radius: 50px;
+            }
+        """)
+        
+        icon_layout = QVBoxLayout()
+        factory_icon = QLabel('🏭')
+        factory_icon.setFont(QFont('Segoe UI Emoji', 48))
+        factory_icon.setAlignment(Qt.AlignCenter)
+        factory_icon.setStyleSheet("color: white; background: transparent;")
+        icon_layout.addWidget(factory_icon)
+        icon_widget.setLayout(icon_layout)
+        
+        # 将图标居中
+        icon_container = QWidget()
+        icon_container_layout = QHBoxLayout()
+        icon_container_layout.addStretch()
+        icon_container_layout.addWidget(icon_widget)
+        icon_container_layout.addStretch()
+        icon_container.setLayout(icon_container_layout)
+        
+        top_layout.addWidget(icon_container)
+
+        # 主标题
+        title = QLabel('向阳厂数据管理系统')
+        title.setFont(QFont('Microsoft YaHei', 24, QFont.Bold))
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("color: white; background: transparent; letter-spacing: 2px;")
+        top_layout.addWidget(title)
+
+        # 副标题
+        subtitle = QLabel('XiangYang Factory Management System')
+        subtitle.setFont(QFont('Arial', 11))
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setStyleSheet("color: rgba(255,255,255,0.7); background: transparent;")
+        top_layout.addWidget(subtitle)
+
+        # 装饰线条
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setFixedHeight(2)
+        line.setStyleSheet("background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3498db, stop:0.5 #ecf0f1, stop:1 #3498db);")
+        line.setContentsMargins(20, 10, 20, 10)
+        top_layout.addWidget(line)
+
+        top_widget.setLayout(top_layout)
+        container_layout.addWidget(top_widget)
+
+        # ========== 登录表单区域 ==========
+        form_widget = QWidget()
+        form_widget.setStyleSheet("""
+            QWidget {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 15px;
+            }
+        """)
+        
+        form_layout = QVBoxLayout()
+        form_layout.setContentsMargins(40, 30, 40, 30)
+        form_layout.setSpacing(25)
+
+        # 用户名输入组
+        user_group = QWidget()
+        user_group_layout = QVBoxLayout()
+        user_group_layout.setSpacing(8)
+        user_group_layout.setContentsMargins(0, 0, 0, 0)
+
+        user_label = QLabel('用户名')
+        user_label.setFont(QFont('Microsoft YaHei', 10, QFont.Bold))
+        user_label.setStyleSheet("color: #ecf0f1; background: transparent;")
+        user_group_layout.addWidget(user_label)
+
+        self.user_input = QLineEdit()
+        self.user_input.setPlaceholderText('请输入用户名')
+        self.user_input.setFixedHeight(45)
+        self.user_input.setStyleSheet("""
+            QLineEdit {
+                background: rgba(255, 255, 255, 0.15);
+                border: 2px solid rgba(255, 255, 255, 0.2);
+                border-radius: 8px;
+                padding: 0 15px;
+                color: white;
+                font-size: 14px;
+            }
+            QLineEdit:hover {
+                border: 2px solid #3498db;
+                background: rgba(255, 255, 255, 0.2);
+            }
+            QLineEdit:focus {
+                border: 2px solid #e74c3c;
+                background: rgba(255, 255, 255, 0.25);
+            }
+            QLineEdit::placeholder {
+                color: rgba(255, 255, 255, 0.5);
+                font-style: italic;
+            }
+        """)
+        
+        # 添加左侧图标
+        user_icon = QLabel('👤')
+        user_icon.setStyleSheet("background: transparent; color: #3498db; font-size: 18px; padding-left: 10px;")
+        user_layout = QHBoxLayout()
+        user_layout.setContentsMargins(0, 0, 0, 0)
+        user_layout.setSpacing(0)
+        user_layout.addWidget(user_icon)
+        user_layout.addWidget(self.user_input)
+        user_group_layout.addLayout(user_layout)
+        
+        user_group.setLayout(user_group_layout)
+        form_layout.addWidget(user_group)
+
+        # 密码输入组
+        pwd_group = QWidget()
+        pwd_group_layout = QVBoxLayout()
+        pwd_group_layout.setSpacing(8)
+        pwd_group_layout.setContentsMargins(0, 0, 0, 0)
+
+        pwd_label = QLabel('密码')
+        pwd_label.setFont(QFont('Microsoft YaHei', 10, QFont.Bold))
+        pwd_label.setStyleSheet("color: #ecf0f1; background: transparent;")
+        pwd_group_layout.addWidget(pwd_label)
+
+        self.pwd_input = QLineEdit()
+        self.pwd_input.setPlaceholderText('请输入密码')
+        self.pwd_input.setEchoMode(QLineEdit.Password)
+        self.pwd_input.setFixedHeight(45)
+        self.pwd_input.setStyleSheet("""
+            QLineEdit {
+                background: rgba(255, 255, 255, 0.15);
+                border: 2px solid rgba(255, 255, 255, 0.2);
+                border-radius: 8px;
+                padding: 0 15px;
+                color: white;
+                font-size: 14px;
+            }
+            QLineEdit:hover {
+                border: 2px solid #3498db;
+                background: rgba(255, 255, 255, 0.2);
+            }
+            QLineEdit:focus {
+                border: 2px solid #e74c3c;
+                background: rgba(255, 255, 255, 0.25);
+            }
+            QLineEdit::placeholder {
+                color: rgba(255, 255, 255, 0.5);
+                font-style: italic;
+            }
+        """)
+        
+        # 添加左侧图标
+        pwd_icon = QLabel('🔒')
+        pwd_icon.setStyleSheet("background: transparent; color: #3498db; font-size: 18px; padding-left: 10px;")
+        pwd_layout = QHBoxLayout()
+        pwd_layout.setContentsMargins(0, 0, 0, 0)
+        pwd_layout.setSpacing(0)
+        pwd_layout.addWidget(pwd_icon)
+        pwd_layout.addWidget(self.pwd_input)
+        pwd_group_layout.addLayout(pwd_layout)
+        
+        pwd_group.setLayout(pwd_group_layout)
+        form_layout.addWidget(pwd_group)
+
+        # 记住密码选项（可选）
+        remember_widget = QWidget()
+        remember_layout = QHBoxLayout()
+        remember_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.remember_check = QCheckBox('记住密码')
+        self.remember_check.setStyleSheet("""
+            QCheckBox {
+                color: rgba(255, 255, 255, 0.8);
+                font-size: 12px;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border-radius: 3px;
+                border: 2px solid #3498db;
+                background: rgba(255, 255, 255, 0.1);
+            }
+            QCheckBox::indicator:checked {
+                background: #3498db;
+                image: url(:/icons/check.png);
+            }
+        """)
+        
+        forgot_label = QLabel('忘记密码?')
+        forgot_label.setStyleSheet("color: #3498db; font-size: 12px;")
+        forgot_label.setCursor(Qt.PointingHandCursor)
+        
+        remember_layout.addWidget(self.remember_check)
+        remember_layout.addStretch()
+        remember_layout.addWidget(forgot_label)
+        remember_widget.setLayout(remember_layout)
+        
+        form_layout.addWidget(remember_widget)
+
+        # 按钮区域
+        btn_widget = QWidget()
+        btn_layout = QVBoxLayout()
+        btn_layout.setSpacing(12)
+        btn_layout.setContentsMargins(0, 20, 0, 10)
+
+        # 登录按钮
+        login_btn = QPushButton('登 录')
+        login_btn.setFixedHeight(50)
+        login_btn.setCursor(Qt.PointingHandCursor)
+        login_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #e74c3c, stop:1 #c0392b);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: bold;
+                letter-spacing: 2px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #e67e22, stop:1 #d35400);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #c0392b, stop:1 #a93226);
+            }
+        """)
+        login_btn.clicked.connect(self.login)
+        btn_layout.addWidget(login_btn)
+
+        # 取消按钮
+        cancel_btn = QPushButton('取 消')
+        cancel_btn.setFixedHeight(45)
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(255, 255, 255, 0.1);
+                color: #ecf0f1;
+                border: 2px solid rgba(255, 255, 255, 0.2);
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: bold;
+                letter-spacing: 2px;
+            }
+            QPushButton:hover {
+                background: rgba(255, 255, 255, 0.15);
+                border: 2px solid #e74c3c;
+            }
+            QPushButton:pressed {
+                background: rgba(0, 0, 0, 0.2);
+            }
+        """)
+        cancel_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(cancel_btn)
+
+        btn_widget.setLayout(btn_layout)
+        form_layout.addWidget(btn_widget)
+
+        form_widget.setLayout(form_layout)
+        container_layout.addWidget(form_widget)
+
+        # ========== 底部提示 ==========
+        tip_widget = QWidget()
+        tip_layout = QVBoxLayout()
+        tip_layout.setSpacing(5)
+
+        tip_title = QLabel('默认测试账号')
+        tip_title.setFont(QFont('Microsoft YaHei', 10, QFont.Bold))
+        tip_title.setAlignment(Qt.AlignCenter)
+        tip_title.setStyleSheet("color: #f1c40f; background: transparent;")
+        tip_layout.addWidget(tip_title)
+
+        tip_text = QLabel('一线工厂: factory / factory123\n财务: admin / admin123')
+        tip_text.setAlignment(Qt.AlignCenter)
+        tip_text.setStyleSheet("""
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+        """)
+        tip_layout.addWidget(tip_text)
+
+        tip_widget.setLayout(tip_layout)
+        container_layout.addWidget(tip_widget)
+
+        container.setLayout(container_layout)
+        main_layout.addWidget(container)
+
+        self.setLayout(main_layout)
+
+        # 设置默认焦点
+        self.user_input.setFocus()
+
+        # 连接回车键
+        self.user_input.returnPressed.connect(self.pwd_input.setFocus)
+        self.pwd_input.returnPressed.connect(self.login)
+
+    def login(self):
+        username = self.user_input.text().strip()
+        password = self.pwd_input.text()
+
+        if not username or not password:
+            self.show_message('警告', '请输入用户名和密码！', QMessageBox.Warning)
+            return
+
+        result = self.db_manager.fetch_one(
+            'SELECT role FROM users WHERE username=? AND password=?',
+            (username, password)
+        )
+
+        if result:
+            self.user_role = result[0]
+            self.username = username
+            self.accept()
+        else:
+            self.show_message('错误', '用户名或密码错误！', QMessageBox.Critical)
+
+    def show_message(self, title, text, icon):
+        """自定义消息框"""
+        msg = QMessageBox(self)
+        msg.setWindowTitle(title)
+        msg.setText(text)
+        msg.setIcon(icon)
+        msg.setStyleSheet("""
+            QMessageBox {
+                background-color: #2c3e50;
+            }
+            QLabel {
+                color: white;
+                font-size: 14px;
+                min-width: 250px;
+            }
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                padding: 8px 25px;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: bold;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+        """)
+        msg.exec_()
+
+class MainWindow(QMainWindow):
+    """主窗口 - 优化版"""
+    
+    def __init__(self, user_role, username):
+        super().__init__()
+        self.user_role = user_role
+        self.username = username
+        self.db_manager = DatabaseManager()
+        
+        self.init_ui()
+        self.showMaximized()
+    
+    def init_ui(self):
+        # 窗口设置
+        self.setWindowTitle(f'向阳厂数据管理系统 - 当前用户: {self.username}({self.user_role})')
+        
+        # 设置应用图标（如果有的话）
+        # self.setWindowIcon(QIcon(':/icons/factory.png'))
+        
+        # 设置全局样式
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #f5f6fa;
+            }
+            QTabWidget::pane {
+                border: none;
+                background-color: white;
+                border-radius: 8px;
+            }
+            QTabBar::tab {
+                background-color: #ecf0f1;
+                color: #2c3e50;
+                padding: 12px 25px;
+                margin-right: 5px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                font-weight: bold;
+            }
+            QTabBar::tab:selected {
+                background-color: #3498db;
+                color: white;
+            }
+            QTabBar::tab:hover:!selected {
+                background-color: #bdc3c7;
+            }
+            QStatusBar {
+                background-color: #2c3e50;
+                color: white;
+                padding: 5px;
+            }
+        """)
+        
+        # 中央部件
+        central_widget = QWidget()
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setSpacing(15)
+
+        # ========== 顶部工具栏 ==========
+        toolbar = QWidget()
+        toolbar.setFixedHeight(60)
+        toolbar.setStyleSheet("""
+            QWidget {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #3498db, stop:1 #2980b9);
+                border-radius: 10px;
+            }
+        """)
+        
+        toolbar_layout = QHBoxLayout()
+        toolbar_layout.setContentsMargins(20, 0, 20, 0)
+
+        # 左侧欢迎信息
+        welcome_container = QWidget()
+        welcome_layout = QHBoxLayout()
+        welcome_layout.setContentsMargins(0, 0, 0, 0)
+        welcome_layout.setSpacing(10)
+
+        # 用户头像图标
+        avatar = QLabel('👤')
+        avatar.setFont(QFont('Segoe UI Emoji', 20))
+        avatar.setStyleSheet("color: white; background: transparent;")
+        welcome_layout.addWidget(avatar)
+
+        # 欢迎文本
+        welcome_text = QLabel(f'欢迎回来，{self.username}')
+        welcome_text.setFont(QFont('Microsoft YaHei', 12, QFont.Bold))
+        welcome_text.setStyleSheet("color: white; background: transparent;")
+        welcome_layout.addWidget(welcome_text)
+
+        # 角色标签
+        role_badge = QLabel(self.user_role)
+        role_badge.setFixedHeight(25)
+        role_badge.setFixedWidth(80)
+        role_badge.setAlignment(Qt.AlignCenter)
+        role_badge.setStyleSheet("""
+            QLabel {
+                background: rgba(255, 255, 255, 0.3);
+                color: white;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: bold;
+                border: 1px solid rgba(255, 255, 255, 0.5);
+            }
+        """)
+        welcome_layout.addWidget(role_badge)
+
+        welcome_container.setLayout(welcome_layout)
+        toolbar_layout.addWidget(welcome_container)
+
+        toolbar_layout.addStretch()
+
+        # 右侧快捷按钮
+        quick_actions = QWidget()
+        quick_layout = QHBoxLayout()
+        quick_layout.setSpacing(10)
+        quick_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 刷新按钮
+        refresh_btn = QPushButton('🔄 刷新')
+        refresh_btn.setCursor(Qt.PointingHandCursor)
+        refresh_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(255, 255, 255, 0.2);
+                color: white;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 5px;
+                padding: 8px 15px;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background: rgba(255, 255, 255, 0.3);
+            }
+        """)
+        refresh_btn.clicked.connect(self.refresh_data)
+
+        # 退出按钮
+        logout_btn = QPushButton('🚪 退出')
+        logout_btn.setCursor(Qt.PointingHandCursor)
+        logout_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(255, 255, 255, 0.2);
+                color: white;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 5px;
+                padding: 8px 15px;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background: #e74c3c;
+            }
+        """)
+        logout_btn.clicked.connect(self.logout)
+
+        quick_layout.addWidget(refresh_btn)
+        quick_layout.addWidget(logout_btn)
+        quick_actions.setLayout(quick_layout)
+
+        toolbar_layout.addWidget(quick_actions)
+        toolbar.setLayout(toolbar_layout)
+        
+        main_layout.addWidget(toolbar)
+
+        # ========== 主要内容区域 ==========
+        content_widget = QWidget()
+        content_layout = QVBoxLayout()
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(15)
+
+        # 标签页
+        tab_widget = QTabWidget()
+        tab_widget.setDocumentMode(True)  # 现代风格
+        tab_widget.tabBar().setExpanding(True)  # 标签等宽
+
+        # 货品加工收发标签页
+        goods_tab = GoodsProcessingTab(self.db_manager, self.user_role, self.username)
+        tab_widget.addTab(goods_tab, '📦 货品加工收发')
+
+        # 工资核算标签页
+        wage_tab = WageCalculationTab(self.db_manager, self.user_role, self.username)
+        tab_widget.addTab(wage_tab, '💰 工资核算')
+
+        # 客户结算货款（预留）
+        if self.user_role == '财务':
+            customer_tab = QWidget()
+            # 初始化客户结算标签页
+            tab_widget.addTab(customer_tab, '🤝 客户结算')
+
+        # 利润核算（预留）
+        if self.user_role == '财务':
+            profit_tab = QWidget()
+            # 初始化利润核算标签页
+            tab_widget.addTab(profit_tab, '📊 利润核算')
+
+        content_layout.addWidget(tab_widget)
+
+        # ========== 底部状态栏 ==========
+        status_bar = QStatusBar()
+        status_bar.setFixedHeight(35)
+        status_bar.showMessage(f'当前时间: {QDateTime.currentDateTime().toString("yyyy-MM-dd hh:mm:ss")} | 数据状态: 已连接')
+
+        # 添加数据库状态指示器
+        db_status = QLabel('● 数据库正常')
+        db_status.setStyleSheet("color: #2ecc71; font-weight: bold;")
+        status_bar.addPermanentWidget(db_status)
+
+        self.setStatusBar(status_bar)
+
+        content_widget.setLayout(content_layout)
+        main_layout.addWidget(content_widget)
+
+        central_widget.setLayout(main_layout)
+        self.setCentralWidget(central_widget)
+
+        # 定时更新状态栏时间
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_status_time)
+        self.timer.start(1000)
+
+    def update_status_time(self):
+        """更新状态栏时间"""
+        current_time = QDateTime.currentDateTime().toString("yyyy-MM-dd hh:mm:ss")
+        self.statusBar().showMessage(f'当前时间: {current_time} | 数据状态: 已连接')
+
+    def refresh_data(self):
+        """刷新数据"""
+        # 获取当前活动的标签页
+        current_tab = self.centralWidget().findChild(QTabWidget).currentWidget()
+        if hasattr(current_tab, 'refresh'):
+            current_tab.refresh()
+            QMessageBox.information(self, '提示', '数据刷新成功！')
+
+    def logout(self):
+        """退出登录"""
+        reply = QMessageBox.question(
+            self, 
+            '确认退出', 
+            '确定要退出登录吗？',
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            self.db_manager.close()
+            # 返回登录界面
+            self.close()
+
+    def closeEvent(self, event):
+        """关闭事件"""
+        self.db_manager.close()
+        event.accept()
+
+def main():
+    app = QApplication(sys.argv)
+
+    # 设置应用样式
+    app.setStyle('Fusion')
+
+    # 创建数据库管理器（使用正确的数据库路径）
+    db_path = get_database_path()
+    db_manager = DatabaseManager(db_path)
+    
+    # 显示登录对话框
+    login_dialog = LoginDialog(db_manager)
+    
+    if login_dialog.exec_() == QDialog.Accepted:
+        # 创建主窗口
+        main_window = MainWindow(login_dialog.user_role, login_dialog.username)
+        main_window.show()
+        
+        sys.exit(app.exec_())
+    else:
+        sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()

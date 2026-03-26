@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../styles/common.css">
+  <link rel="stylesheet" href="../styles/wage.css">
+</head>
+<body>
+  <div class="wage-calculation">
+    <!-- 操作按钮 -->
+    <div class="card action-card">
+      <button class="btn btn-primary" onclick="loadData()">刷新</button>
+      <button class="btn btn-success" id="addBtn" onclick="handleAdd()">添加记录</button>
+    </div>
+
+    <!-- 数据表格 -->
+    <div class="card table-card">
+      <div class="table-wrapper">
+        <table id="wageTable">
+          <thead>
+            <tr>
+              <th width="60">ID</th>
+              <th width="150">加工车间</th>
+              <th width="100">织片数量</th>
+              <th width="100">织片工资</th>
+              <th width="100">套口货物</th>
+              <th width="100">套口工资</th>
+              <th width="100">手缝货物</th>
+              <th width="100">手缝工资</th>
+              <th width="100">创建人</th>
+              <th width="160">创建时间</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新增对话框 -->
+  <div id="dialog" class="dialog">
+    <div class="dialog-content">
+      <div class="dialog-header">
+        <h3>工资核算记录</h3>
+        <button class="dialog-close" onclick="closeDialog()">&times;</button>
+      </div>
+      <div class="dialog-body">
+        <form id="wageForm">
+          <div class="divider">车间信息</div>
+          <div class="form-row">
+            <div class="form-item">
+              <label>加工车间 *</label>
+              <input type="text" id="workshopName" required>
+            </div>
+            <div class="form-item">
+              <label>加工日期</label>
+              <input type="date" id="processingDate">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-item">
+              <label>织片数量</label>
+              <input type="number" id="knittingQty" min="0" value="0">
+            </div>
+            <div class="form-item">
+              <label>织片工资</label>
+              <input type="number" id="knittingWage" min="0" step="0.01" value="0">
+            </div>
+          </div>
+
+          <div class="divider">套口信息</div>
+          <div class="form-row">
+            <div class="form-item">
+              <label>套口货物类型</label>
+              <input type="text" id="overlockGoodsType">
+            </div>
+            <div class="form-item">
+              <label>套口工资</label>
+              <input type="number" id="overlockWage" min="0" step="0.01" value="0">
+            </div>
+          </div>
+
+          <div class="divider">手缝信息</div>
+          <div class="form-row">
+            <div class="form-item">
+              <label>手缝货物类型</label>
+              <input type="text" id="handSewingGoodsType">
+            </div>
+            <div class="form-item">
+              <label>手缝工资</label>
+              <input type="number" id="handSewingWage" min="0" step="0.01" value="0">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn" onclick="closeDialog()">取消</button>
+        <button class="btn btn-primary" onclick="handleSubmit()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/wage.js"></script>
+</body>
+</html>

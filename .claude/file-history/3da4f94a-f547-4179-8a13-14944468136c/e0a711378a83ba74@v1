@@ -1,0 +1,24 @@
+package kafka
+
+import (
+	"chatapp/backend/log"
+	"sync"
+)
+
+type ConsumerCallback func(data []byte)
+
+var (
+	consumerMu       sync.RWMutex
+	consumerCallback ConsumerCallback
+)
+
+func InitConsumer(hosts []string) {
+	log.Logger.Info("init kafka consumer (in-memory fallback)", log.Any("hosts", hosts))
+}
+
+func InitConsumerCallback(callback ConsumerCallback) {
+	consumerMu.Lock()
+	consumerCallback = callback
+	consumerMu.Unlock()
+	log.Logger.Info("kafka consumer callback registered")
+}

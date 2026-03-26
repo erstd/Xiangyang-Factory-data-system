@@ -1,0 +1,541 @@
+/home/erstd/projects/xiangyang/main.py-9-import sys
+/home/erstd/projects/xiangyang/main.py-10-import sqlite3
+/home/erstd/projects/xiangyang/main.py-11-from datetime import datetime
+/home/erstd/projects/xiangyang/main.py-12-import os
+/home/erstd/projects/xiangyang/main.py-13-from data import DatabaseManager, get_database_path
+/home/erstd/projects/xiangyang/main.py-14-from goodsprocess import GoodsProcessingTab, GoodsProcessingDialog
+/home/erstd/projects/xiangyang/main.py-15-from wage import WageCalculationDialog, WageCalculationTab
+/home/erstd/projects/xiangyang/main.py-16-from PyQt5.QtWidgets import (
+/home/erstd/projects/xiangyang/main.py-17-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+/home/erstd/projects/xiangyang/main.py-18-    QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem,
+/home/erstd/projects/xiangyang/main.py-19-    QMessageBox, QDialog, QTabWidget, QComboBox, QDateEdit, QHeaderView,
+/home/erstd/projects/xiangyang/main.py-20-    QTextEdit, QGridLayout, QGroupBox, QSplitter, QFileDialog
+/home/erstd/projects/xiangyang/main.py-21-)
+/home/erstd/projects/xiangyang/main.py-22-from PyQt5.QtCore import Qt, QDate
+/home/erstd/projects/xiangyang/main.py-23-from PyQt5.QtGui import QFont
+/home/erstd/projects/xiangyang/main.py-24-
+/home/erstd/projects/xiangyang/main.py-25-
+main.py-26-class LoginDialog(QDialog):
+/home/erstd/projects/xiangyang/main.py-27-    """登录对话框"""
+/home/erstd/projects/xiangyang/main.py-28-    
+main.py:29:    def __init__(self, db_manager):
+/home/erstd/projects/xiangyang/main.py-30-        super().__init__()
+main.py:31:        self.db_manager = db_manager
+/home/erstd/projects/xiangyang/main.py-32-        self.user_role = None
+/home/erstd/projects/xiangyang/main.py-33-        self.username = None
+/home/erstd/projects/xiangyang/main.py-34-        self.init_ui()
+/home/erstd/projects/xiangyang/main.py-35-    
+main.py-36-    def init_ui(self):
+/home/erstd/projects/xiangyang/main.py-37-        self.setWindowTitle('向阳厂数据管理系统 - 登录')
+/home/erstd/projects/xiangyang/main.py-38-        self.setFixedSize(400, 300)
+/home/erstd/projects/xiangyang/main.py-39-        
+/home/erstd/projects/xiangyang/main.py-40-        layout = QVBoxLayout()
+/home/erstd/projects/xiangyang/main.py-41-        layout.setSpacing(20)
+/home/erstd/projects/xiangyang/main.py-42-        layout.setContentsMargins(40, 40, 40, 40)
+/home/erstd/projects/xiangyang/main.py-43-        
+/home/erstd/projects/xiangyang/main.py-44-        # 标题
+/home/erstd/projects/xiangyang/main.py-45-        title = QLabel('向阳厂数据管理系统')
+/home/erstd/projects/xiangyang/main.py-46-        title.setFont(QFont('Arial', 16, QFont.Bold))
+/home/erstd/projects/xiangyang/main.py-47-        title.setAlignment(Qt.AlignCenter)
+/home/erstd/projects/xiangyang/main.py-48-        layout.addWidget(title)
+/home/erstd/projects/xiangyang/main.py-49-        
+/home/erstd/projects/xiangyang/main.py-50-        # 用户名
+/home/erstd/projects/xiangyang/main.py-51-        user_layout = QHBoxLayout()
+--
+/home/erstd/projects/xiangyang/main.py-83-        btn_layout.addStretch()
+/home/erstd/projects/xiangyang/main.py-84-        
+/home/erstd/projects/xiangyang/main.py-85-        layout.addLayout(btn_layout)
+/home/erstd/projects/xiangyang/main.py-86-        
+/home/erstd/projects/xiangyang/main.py-87-        # 提示信息
+/home/erstd/projects/xiangyang/main.py-88-        tip_label = QLabel('提示：默认账号 factory/factory123 (一线工厂) 或 admin/admin123 (财务)')
+main.py-89-        tip_label.setStyleSheet('color: gray; font-size: 10px;')
+/home/erstd/projects/xiangyang/main.py-90-        tip_label.setWordWrap(True)
+/home/erstd/projects/xiangyang/main.py-91-        layout.addWidget(tip_label)
+/home/erstd/projects/xiangyang/main.py-92-        
+/home/erstd/projects/xiangyang/main.py-93-        self.setLayout(layout)
+/home/erstd/projects/xiangyang/main.py-94-    
+main.py-95-    def login(self):
+/home/erstd/projects/xiangyang/main.py-96-        username = self.user_input.text().strip()
+/home/erstd/projects/xiangyang/main.py-97-        password = self.pwd_input.text()
+/home/erstd/projects/xiangyang/main.py-98-        
+main.py-99-        if not username or not password:
+/home/erstd/projects/xiangyang/main.py-100-            QMessageBox.warning(self, '警告', '请输入用户名和密码！')
+/home/erstd/projects/xiangyang/main.py-101-            return
+/home/erstd/projects/xiangyang/main.py-102-        
+main.py:103:        result = self.db_manager.fetch_one(
+/home/erstd/projects/xiangyang/main.py-104-            'SELECT role FROM users WHERE username=? AND password=?',
+/home/erstd/projects/xiangyang/main.py-105-            (username, password)
+/home/erstd/projects/xiangyang/main.py-106-        )
+/home/erstd/projects/xiangyang/main.py-107-        
+main.py-108-        if result:
+/home/erstd/projects/xiangyang/main.py-109-            self.user_role = result[0]
+/home/erstd/projects/xiangyang/main.py-110-            self.username = username
+/home/erstd/projects/xiangyang/main.py-111-            self.accept()
+main.py-112-        else:
+/home/erstd/projects/xiangyang/main.py-113-            QMessageBox.critical(self, '错误', '用户名或密码错误！')
+/home/erstd/projects/xiangyang/main.py-114-
+/home/erstd/projects/xiangyang/main.py-115-
+/home/erstd/projects/xiangyang/main.py-116-
+main.py-117-class MainWindow(QMainWindow):
+/home/erstd/projects/xiangyang/main.py-118-    """主窗口"""
+/home/erstd/projects/xiangyang/main.py-119-    
+main.py-120-    def __init__(self, user_role, username):
+/home/erstd/projects/xiangyang/main.py-121-        super().__init__()
+/home/erstd/projects/xiangyang/main.py-122-        self.user_role = user_role
+/home/erstd/projects/xiangyang/main.py-123-        self.username = username
+main.py:124:        self.db_manager = DatabaseManager()
+/home/erstd/projects/xiangyang/main.py-125-        
+/home/erstd/projects/xiangyang/main.py-126-        self.init_ui()
+/home/erstd/projects/xiangyang/main.py-127-        self.showMaximized()
+/home/erstd/projects/xiangyang/main.py-128-    
+main.py-129-    def init_ui(self):
+/home/erstd/projects/xiangyang/main.py-130-        # 窗口设置
+/home/erstd/projects/xiangyang/main.py-131-        self.setWindowTitle(f'向阳厂数据管理系统 - {self.username}({self.user_role})')
+/home/erstd/projects/xiangyang/main.py-132-        
+/home/erstd/projects/xiangyang/main.py-133-        # 中央部件
+/home/erstd/projects/xiangyang/main.py-134-        central_widget = QWidget()
+/home/erstd/projects/xiangyang/main.py-135-        layout = QVBoxLayout()
+/home/erstd/projects/xiangyang/main.py-136-        
+/home/erstd/projects/xiangyang/main.py-137-        # 欢迎信息
+/home/erstd/projects/xiangyang/main.py-138-        welcome_label = QLabel(f'欢迎 {self.username} ({self.user_role})')
+/home/erstd/projects/xiangyang/main.py-139-        welcome_label.setFont(QFont('Arial', 12))
+main.py-140-        welcome_label.setStyleSheet('color: blue; padding: 10px;')
+/home/erstd/projects/xiangyang/main.py-141-        layout.addWidget(welcome_label)
+/home/erstd/projects/xiangyang/main.py-142-        
+/home/erstd/projects/xiangyang/main.py-143-        # 标签页
+/home/erstd/projects/xiangyang/main.py-144-        tab_widget = QTabWidget()
+/home/erstd/projects/xiangyang/main.py-145-        
+/home/erstd/projects/xiangyang/main.py-146-        # 货品加工收发
+main.py:147:        goods_tab = GoodsProcessingTab(self.db_manager, self.user_role, self.username)
+/home/erstd/projects/xiangyang/main.py-148-        tab_widget.addTab(goods_tab, '货品加工收发')
+/home/erstd/projects/xiangyang/main.py-149-        
+/home/erstd/projects/xiangyang/main.py-150-        # 工资核算
+main.py:151:        wage_tab = WageCalculationTab(self.db_manager, self.user_role, self.username)
+/home/erstd/projects/xiangyang/main.py-152-        tab_widget.addTab(wage_tab, '工资核算')
+/home/erstd/projects/xiangyang/main.py-153-        
+/home/erstd/projects/xiangyang/main.py-154-        # 未来可添加：客户结算货款、利润核算等标签页
+/home/erstd/projects/xiangyang/main.py-155-        
+/home/erstd/projects/xiangyang/main.py-156-        layout.addWidget(tab_widget)
+/home/erstd/projects/xiangyang/main.py-157-        
+/home/erstd/projects/xiangyang/main.py-158-        central_widget.setLayout(layout)
+/home/erstd/projects/xiangyang/main.py-159-        self.setCentralWidget(central_widget)
+/home/erstd/projects/xiangyang/main.py-160-    
+main.py-161-    def closeEvent(self, event):
+/home/erstd/projects/xiangyang/main.py-162-        """关闭事件"""
+main.py:163:        self.db_manager.close()
+/home/erstd/projects/xiangyang/main.py-164-        event.accept()
+/home/erstd/projects/xiangyang/main.py-165-
+/home/erstd/projects/xiangyang/main.py-166-
+main.py-167-def main():
+/home/erstd/projects/xiangyang/main.py-168-    app = QApplication(sys.argv)
+/home/erstd/projects/xiangyang/main.py-169-    
+/home/erstd/projects/xiangyang/main.py-170-    # 设置应用样式
+/home/erstd/projects/xiangyang/main.py-171-    app.setStyle('Fusion')
+/home/erstd/projects/xiangyang/main.py-172-    
+/home/erstd/projects/xiangyang/main.py-173-    # 创建数据库管理器
+main.py:174:    db_manager = DatabaseManager()
+/home/erstd/projects/xiangyang/main.py-175-    
+/home/erstd/projects/xiangyang/main.py-176-    # 显示登录对话框
+main.py:177:    login_dialog = LoginDialog(db_manager)
+/home/erstd/projects/xiangyang/main.py-178-    
+main.py-179-    if login_dialog.exec_() == QDialog.Accepted:
+/home/erstd/projects/xiangyang/main.py-180-        # 创建主窗口
+/home/erstd/projects/xiangyang/main.py-181-        main_window = MainWindow(login_dialog.user_role, login_dialog.username)
+/home/erstd/projects/xiangyang/main.py-182-        main_window.show()
+/home/erstd/projects/xiangyang/main.py-183-        
+/home/erstd/projects/xiangyang/main.py-184-        sys.exit(app.exec_())
+main.py-185-    else:
+/home/erstd/projects/xiangyang/main.py-186-        sys.exit(0)
+/home/erstd/projects/xiangyang/main.py-187-
+/home/erstd/projects/xiangyang/main.py-188-
+main.py-189-if __name__ == '__main__':
+/home/erstd/projects/xiangyang/main.py-190-    main()
+--
+/home/erstd/projects/xiangyang/goodsprocess.py-1-import sqlite3
+/home/erstd/projects/xiangyang/goodsprocess.py-2-from datetime import datetime
+/home/erstd/projects/xiangyang/goodsprocess.py-3-from PyQt5.QtWidgets import (
+/home/erstd/projects/xiangyang/goodsprocess.py-4-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+/home/erstd/projects/xiangyang/goodsprocess.py-5-    QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem,
+/home/erstd/projects/xiangyang/goodsprocess.py-6-    QMessageBox, QDialog, QTabWidget, QComboBox, QDateEdit, QHeaderView,
+/home/erstd/projects/xiangyang/goodsprocess.py-7-    QTextEdit, QGridLayout, QGroupBox, QSplitter, QFileDialog
+/home/erstd/projects/xiangyang/goodsprocess.py-8-)
+/home/erstd/projects/xiangyang/goodsprocess.py-9-from PyQt5.QtCore import Qt, QDate
+/home/erstd/projects/xiangyang/goodsprocess.py-10-from PyQt5.QtGui import QFont
+/home/erstd/projects/xiangyang/goodsprocess.py-11-
+/home/erstd/projects/xiangyang/goodsprocess.py-12-
+goodsprocess.py-13-class GoodsProcessingTab(QWidget):
+/home/erstd/projects/xiangyang/goodsprocess.py-14-    """货品加工收发标签页"""
+/home/erstd/projects/xiangyang/goodsprocess.py-15-    
+goodsprocess.py:16:    def __init__(self, db_manager, user_role, username):
+/home/erstd/projects/xiangyang/goodsprocess.py-17-        super().__init__()
+goodsprocess.py:18:        self.db_manager = db_manager
+/home/erstd/projects/xiangyang/goodsprocess.py-19-        self.user_role = user_role
+/home/erstd/projects/xiangyang/goodsprocess.py-20-        self.username = username
+/home/erstd/projects/xiangyang/goodsprocess.py-21-        self.init_ui()
+/home/erstd/projects/xiangyang/goodsprocess.py-22-    
+goodsprocess.py-23-    def init_ui(self):
+/home/erstd/projects/xiangyang/goodsprocess.py-24-        layout = QVBoxLayout()
+/home/erstd/projects/xiangyang/goodsprocess.py-25-        
+/home/erstd/projects/xiangyang/goodsprocess.py-26-        # ===== 搜索区域增强 =====
+/home/erstd/projects/xiangyang/goodsprocess.py-27-        search_layout = QHBoxLayout()
+/home/erstd/projects/xiangyang/goodsprocess.py-28-        
+/home/erstd/projects/xiangyang/goodsprocess.py-29-        # 类型筛选
+/home/erstd/projects/xiangyang/goodsprocess.py-30-        self.type_filter = QComboBox()
+/home/erstd/projects/xiangyang/goodsprocess.py-31-        self.type_filter.addItems(['全部', '织纱', '织片'])
+/home/erstd/projects/xiangyang/goodsprocess.py-32-        self.type_filter.currentTextChanged.connect(self.load_data)
+/home/erstd/projects/xiangyang/goodsprocess.py-33-        
+/home/erstd/projects/xiangyang/goodsprocess.py-34-        self.search_input = QLineEdit()
+/home/erstd/projects/xiangyang/goodsprocess.py-35-        self.search_input.setPlaceholderText('搜索客户名称/款号...')
+/home/erstd/projects/xiangyang/goodsprocess.py-36-        self.search_input.returnPressed.connect(self.search_data)
+/home/erstd/projects/xiangyang/goodsprocess.py-37-        
+/home/erstd/projects/xiangyang/goodsprocess.py-38-        search_btn = QPushButton('搜索')
+--
+/home/erstd/projects/xiangyang/goodsprocess.py-119-
+goodsprocess.py-120-    def load_data(self):
+/home/erstd/projects/xiangyang/goodsprocess.py-121-        """加载数据（支持类型筛选）"""
+/home/erstd/projects/xiangyang/goodsprocess.py-122-        base_query = '''
+/home/erstd/projects/xiangyang/goodsprocess.py-123-            SELECT id, goods_type, customer_name,
+/home/erstd/projects/xiangyang/goodsprocess.py-124-                customer_send_qty, factory_receive_qty, diff_receive,
+/home/erstd/projects/xiangyang/goodsprocess.py-125-                factory_send_qty, customer_receive_qty, diff_factory_customer,
+/home/erstd/projects/xiangyang/goodsprocess.py-126-                COALESCE(modified_date, created_date), 
+/home/erstd/projects/xiangyang/goodsprocess.py-127-                COALESCE(modified_by, created_by, '-')
+/home/erstd/projects/xiangyang/goodsprocess.py-128-            FROM goods_processing_v2
+/home/erstd/projects/xiangyang/goodsprocess.py-129-        '''
+/home/erstd/projects/xiangyang/goodsprocess.py-130-        
+/home/erstd/projects/xiangyang/goodsprocess.py-131-        params = []
+/home/erstd/projects/xiangyang/goodsprocess.py-132-        current_type = self.type_filter.currentText()
+goodsprocess.py-133-        if current_type != '全部':
+/home/erstd/projects/xiangyang/goodsprocess.py-134-            base_query += ' WHERE goods_type = ?'
+/home/erstd/projects/xiangyang/goodsprocess.py-135-            params.append(current_type)
+/home/erstd/projects/xiangyang/goodsprocess.py-136-        
+/home/erstd/projects/xiangyang/goodsprocess.py-137-        base_query += ' ORDER BY id DESC'
+/home/erstd/projects/xiangyang/goodsprocess.py-138-        
+goodsprocess.py:139:        results = self.db_manager.fetch_all(base_query, params if params else None)
+/home/erstd/projects/xiangyang/goodsprocess.py-140-        self._populate_table(results)
+/home/erstd/projects/xiangyang/goodsprocess.py-141-
+goodsprocess.py-142-    def search_data(self):
+/home/erstd/projects/xiangyang/goodsprocess.py-143-        """增强搜索（支持款号+客户名）"""
+/home/erstd/projects/xiangyang/goodsprocess.py-144-        keyword = self.search_input.text().strip()
+goodsprocess.py-145-        if not keyword:
+/home/erstd/projects/xiangyang/goodsprocess.py-146-            self.load_data()
+/home/erstd/projects/xiangyang/goodsprocess.py-147-            return
+/home/erstd/projects/xiangyang/goodsprocess.py-148-        
+/home/erstd/projects/xiangyang/goodsprocess.py-149-        base_query = '''
+/home/erstd/projects/xiangyang/goodsprocess.py-150-            SELECT id, goods_type, customer_name,
+/home/erstd/projects/xiangyang/goodsprocess.py-151-                customer_send_qty, factory_receive_qty, diff_receive,
+/home/erstd/projects/xiangyang/goodsprocess.py-152-                factory_send_qty, customer_receive_qty, diff_factory_customer,
+/home/erstd/projects/xiangyang/goodsprocess.py-153-                COALESCE(modified_date, created_date), 
+/home/erstd/projects/xiangyang/goodsprocess.py-154-                COALESCE(modified_by, created_by, '-')
+/home/erstd/projects/xiangyang/goodsprocess.py-155-            FROM goods_processing_v2
+/home/erstd/projects/xiangyang/goodsprocess.py-156-            WHERE (customer_name LIKE ?)
+/home/erstd/projects/xiangyang/goodsprocess.py-157-        '''
+/home/erstd/projects/xiangyang/goodsprocess.py-158-        
+/home/erstd/projects/xiangyang/goodsprocess.py-159-        params = [f'%{keyword}%', f'%{keyword}%']
+/home/erstd/projects/xiangyang/goodsprocess.py-160-        current_type = self.type_filter.currentText()
+goodsprocess.py-161-        if current_type != '全部':
+/home/erstd/projects/xiangyang/goodsprocess.py-162-            base_query += ' AND goods_type = ?'
+/home/erstd/projects/xiangyang/goodsprocess.py-163-            params.append(current_type)
+/home/erstd/projects/xiangyang/goodsprocess.py-164-        
+/home/erstd/projects/xiangyang/goodsprocess.py-165-        base_query += ' ORDER BY id DESC'
+goodsprocess.py:166:        results = self.db_manager.fetch_all(base_query, params)
+/home/erstd/projects/xiangyang/goodsprocess.py-167-        self._populate_table(results)
+/home/erstd/projects/xiangyang/goodsprocess.py-168-
+goodsprocess.py-169-    def _populate_table(self, results):
+/home/erstd/projects/xiangyang/goodsprocess.py-170-        """统一表格填充逻辑（含差异高亮）"""
+/home/erstd/projects/xiangyang/goodsprocess.py-171-        self.table.setRowCount(len(results))
+/home/erstd/projects/xiangyang/goodsprocess.py-172-        
+/home/erstd/projects/xiangyang/goodsprocess.py-173-        # 用于统计的变量
+/home/erstd/projects/xiangyang/goodsprocess.py-174-        total_customer_send = 0
+/home/erstd/projects/xiangyang/goodsprocess.py-175-        total_factory_receive = 0
+/home/erstd/projects/xiangyang/goodsprocess.py-176-        total_factory_send = 0
+/home/erstd/projects/xiangyang/goodsprocess.py-177-        total_customer_receive = 0
+/home/erstd/projects/xiangyang/goodsprocess.py-178-        
+goodsprocess.py-179-        for row, data in enumerate(results):
+/home/erstd/projects/xiangyang/goodsprocess.py-180-            # 累加统计数据（跳过可能的None值）
+goodsprocess.py-181-            if len(data) > 8:  # 确保有足够的数据列
+goodsprocess.py-182-                try:
+/home/erstd/projects/xiangyang/goodsprocess.py-183-                    total_customer_send += int(data[4] or 0)
+/home/erstd/projects/xiangyang/goodsprocess.py-184-                    total_factory_receive += int(data[5] or 0)
+/home/erstd/projects/xiangyang/goodsprocess.py-185-                    total_factory_send += int(data[7] or 0)
+/home/erstd/projects/xiangyang/goodsprocess.py-186-                    total_customer_receive += int(data[8] or 0)
+--
+/home/erstd/projects/xiangyang/goodsprocess.py-224-        
+/home/erstd/projects/xiangyang/goodsprocess.py-225-        # 差异高亮
+goodsprocess.py-226-        if total_diff_receive != 0 or total_diff_factory_customer != 0:
+/home/erstd/projects/xiangyang/goodsprocess.py-227-            status_text += " ⚠️ 存在差异"
+goodsprocess.py-228-            self.status_label.setStyleSheet("color: orange; padding: 5px; font-weight: bold;")
+goodsprocess.py-229-        else:
+goodsprocess.py-230-            self.status_label.setStyleSheet("color: green; padding: 5px;")
+/home/erstd/projects/xiangyang/goodsprocess.py-231-        
+/home/erstd/projects/xiangyang/goodsprocess.py-232-        self.status_label.setText(status_text)
+/home/erstd/projects/xiangyang/goodsprocess.py-233-
+goodsprocess.py-234-    def update_status(self):
+/home/erstd/projects/xiangyang/goodsprocess.py-235-        """更新选中状态信息"""
+/home/erstd/projects/xiangyang/goodsprocess.py-236-        selected = self.table.selectedItems()
+goodsprocess.py-237-        if selected:
+/home/erstd/projects/xiangyang/goodsprocess.py-238-            row = selected[0].row()
+/home/erstd/projects/xiangyang/goodsprocess.py-239-            count = len(selected) // self.table.columnCount()  # 粗略估计选中行数
+/home/erstd/projects/xiangyang/goodsprocess.py-240-            self.status_label.setText(f"已选择 {count} 行记录 | " + self.status_label.text())
+/home/erstd/projects/xiangyang/goodsprocess.py-241-
+goodsprocess.py-242-    def add_record(self):
+/home/erstd/projects/xiangyang/goodsprocess.py-243-        """添加记录"""
+goodsprocess.py:244:        dialog = GoodsProcessingDialog(self.db_manager, self.username, mode='add')
+goodsprocess.py-245-        if dialog.exec_() == QDialog.Accepted:
+/home/erstd/projects/xiangyang/goodsprocess.py-246-            self.load_data()
+/home/erstd/projects/xiangyang/goodsprocess.py-247-    
+goodsprocess.py-248-    def edit_record(self):
+/home/erstd/projects/xiangyang/goodsprocess.py-249-        """修改记录"""
+/home/erstd/projects/xiangyang/goodsprocess.py-250-        selected = self.table.selectedItems()
+goodsprocess.py-251-        if not selected:
+/home/erstd/projects/xiangyang/goodsprocess.py-252-            QMessageBox.warning(self, '警告', '请先选择一条记录！')
+/home/erstd/projects/xiangyang/goodsprocess.py-253-            return
+/home/erstd/projects/xiangyang/goodsprocess.py-254-        
+/home/erstd/projects/xiangyang/goodsprocess.py-255-        row = selected[0].row()
+/home/erstd/projects/xiangyang/goodsprocess.py-256-        record_id = int(self.table.item(row, 0).text())
+/home/erstd/projects/xiangyang/goodsprocess.py-257-        
+goodsprocess.py:258:        dialog = GoodsProcessingDialog(self.db_manager, self.username, mode='edit', record_id=record_id)
+goodsprocess.py-259-        if dialog.exec_() == QDialog.Accepted:
+/home/erstd/projects/xiangyang/goodsprocess.py-260-            self.load_data()
+/home/erstd/projects/xiangyang/goodsprocess.py-261-        
+goodsprocess.py-262-    def delete_record(self):
+/home/erstd/projects/xiangyang/goodsprocess.py-263-        """删除记录"""
+/home/erstd/projects/xiangyang/goodsprocess.py-264-        selected = self.table.selectedItems()
+goodsprocess.py-265-        if not selected:
+/home/erstd/projects/xiangyang/goodsprocess.py-266-            QMessageBox.warning(self, '警告', '请先选择一条记录！')
+/home/erstd/projects/xiangyang/goodsprocess.py-267-            return
+/home/erstd/projects/xiangyang/goodsprocess.py-268-        
+/home/erstd/projects/xiangyang/goodsprocess.py-269-        reply = QMessageBox.question(self, '确认', '确定要删除这条记录吗？',
+/home/erstd/projects/xiangyang/goodsprocess.py-270-                                     QMessageBox.Yes | QMessageBox.No)
+goodsprocess.py-271-        if reply == QMessageBox.Yes:
+/home/erstd/projects/xiangyang/goodsprocess.py-272-            row = selected[0].row()
+/home/erstd/projects/xiangyang/goodsprocess.py-273-            record_id = int(self.table.item(row, 0).text())
+/home/erstd/projects/xiangyang/goodsprocess.py-274-            
+/home/erstd/projects/xiangyang/goodsprocess.py-275-            query = 'DELETE FROM goods_processing WHERE id=?'
+goodsprocess.py:276:            if self.db_manager.execute_query(query, (record_id,)):
+/home/erstd/projects/xiangyang/goodsprocess.py-277-                QMessageBox.information(self, '成功', '记录已删除！')
+/home/erstd/projects/xiangyang/goodsprocess.py-278-                self.load_data()
+/home/erstd/projects/xiangyang/goodsprocess.py-279-
+/home/erstd/projects/xiangyang/goodsprocess.py-280-
+goodsprocess.py-281-class GoodsProcessingDialog(QDialog):
+/home/erstd/projects/xiangyang/goodsprocess.py-282-    """货品加工收发记录对话框"""
+/home/erstd/projects/xiangyang/goodsprocess.py-283-    
+goodsprocess.py:284:    def __init__(self, db_manager, username, mode='add', record_id=None):
+/home/erstd/projects/xiangyang/goodsprocess.py-285-        super().__init__()
+goodsprocess.py:286:        self.db_manager = db_manager
+/home/erstd/projects/xiangyang/goodsprocess.py-287-        self.username = username
+/home/erstd/projects/xiangyang/goodsprocess.py-288-        self.mode = mode
+/home/erstd/projects/xiangyang/goodsprocess.py-289-        self.record_id = record_id
+/home/erstd/projects/xiangyang/goodsprocess.py-290-        self.init_ui()
+/home/erstd/projects/xiangyang/goodsprocess.py-291-        
+goodsprocess.py-292-        if mode == 'edit' and record_id:
+/home/erstd/projects/xiangyang/goodsprocess.py-293-            self.load_data()
+/home/erstd/projects/xiangyang/goodsprocess.py-294-    
+goodsprocess.py-295-    def init_ui(self):
+/home/erstd/projects/xiangyang/goodsprocess.py-296-        """初始化UI界面"""
+/home/erstd/projects/xiangyang/goodsprocess.py-297-        self.setWindowTitle('货物加工收发记录')
+/home/erstd/projects/xiangyang/goodsprocess.py-298-        self.setFixedSize(900, 750)
+/home/erstd/projects/xiangyang/goodsprocess.py-299-        
+/home/erstd/projects/xiangyang/goodsprocess.py-300-        main_layout = QVBoxLayout()
+/home/erstd/projects/xiangyang/goodsprocess.py-301-        
+/home/erstd/projects/xiangyang/goodsprocess.py-302-        # ===== 货物类型选择 =====
+goodsprocess.py-303-        if self.mode == 'add':
+/home/erstd/projects/xiangyang/goodsprocess.py-304-            type_layout = QHBoxLayout()
+goodsprocess.py-305-            type_layout.addWidget(QLabel('货物类型:'))
+/home/erstd/projects/xiangyang/goodsprocess.py-306-            self.goods_type = QComboBox()
+--
+/home/erstd/projects/xiangyang/goodsprocess.py-418-            self.diff_receive_display.setText(str(send - recv))
+goodsprocess.py-419-        except:
+/home/erstd/projects/xiangyang/goodsprocess.py-420-            self.diff_receive_display.setText('')
+/home/erstd/projects/xiangyang/goodsprocess.py-421-        
+goodsprocess.py-422-        try:
+/home/erstd/projects/xiangyang/goodsprocess.py-423-            factory_send = int(self.factory_send_qty.text() or 0)
+/home/erstd/projects/xiangyang/goodsprocess.py-424-            cust_recv = int(self.customer_receive_qty.text() or 0)
+/home/erstd/projects/xiangyang/goodsprocess.py-425-            self.diff_factory_customer_display.setText(str(factory_send - cust_recv))
+goodsprocess.py-426-        except:
+/home/erstd/projects/xiangyang/goodsprocess.py-427-            self.diff_factory_customer_display.setText('')
+/home/erstd/projects/xiangyang/goodsprocess.py-428-
+goodsprocess.py-429-    def load_data(self):
+/home/erstd/projects/xiangyang/goodsprocess.py-430-        """加载数据（编辑模式）"""
+/home/erstd/projects/xiangyang/goodsprocess.py-431-        query = '''
+/home/erstd/projects/xiangyang/goodsprocess.py-432-            SELECT goods_type, customer_name, customer_send_date,
+/home/erstd/projects/xiangyang/goodsprocess.py-433-                customer_send_method, customer_send_qty, factory_receive_qty,
+/home/erstd/projects/xiangyang/goodsprocess.py-434-                factory_send_date, factory_send_method, factory_send_qty,
+/home/erstd/projects/xiangyang/goodsprocess.py-435-                customer_receive_qty, created_by
+/home/erstd/projects/xiangyang/goodsprocess.py-436-            FROM goods_processing_v2 WHERE id=?
+/home/erstd/projects/xiangyang/goodsprocess.py-437-        '''
+goodsprocess.py:438:        result = self.db_manager.fetch_one(query, (self.record_id,))
+/home/erstd/projects/xiangyang/goodsprocess.py-439-        
+goodsprocess.py-440-        if result:
+/home/erstd/projects/xiangyang/goodsprocess.py-441-            # 设置货物类型（如果是织纱，标题显示织纱）
+goodsprocess.py-442-            if result[0] == '织纱':
+/home/erstd/projects/xiangyang/goodsprocess.py-443-                self.setWindowTitle('货物加工收发记录 - 织纱')
+/home/erstd/projects/xiangyang/goodsprocess.py-444-            
+/home/erstd/projects/xiangyang/goodsprocess.py-445-            self.customer_name.setText(result[1] or '')
+/home/erstd/projects/xiangyang/goodsprocess.py-446-            
+goodsprocess.py-447-            if result[3]:
+/home/erstd/projects/xiangyang/goodsprocess.py-448-                self.customer_send_date.setDate(QDate.fromString(result[3], 'yyyy-MM-dd'))
+/home/erstd/projects/xiangyang/goodsprocess.py-449-            
+/home/erstd/projects/xiangyang/goodsprocess.py-450-            self.customer_send_method.setCurrentText(result[4] or '快递')
+/home/erstd/projects/xiangyang/goodsprocess.py-451-            self.customer_send_qty.setText(str(result[5]) if result[5] else '')
+/home/erstd/projects/xiangyang/goodsprocess.py-452-            self.factory_receive_qty.setText(str(result[6]) if result[6] else '')
+/home/erstd/projects/xiangyang/goodsprocess.py-453-            
+goodsprocess.py-454-            if result[7]:
+/home/erstd/projects/xiangyang/goodsprocess.py-455-                self.factory_send_date.setDate(QDate.fromString(result[7], 'yyyy-MM-dd'))
+/home/erstd/projects/xiangyang/goodsprocess.py-456-            
+/home/erstd/projects/xiangyang/goodsprocess.py-457-            self.factory_send_method.setCurrentText(result[8] or '快递')
+/home/erstd/projects/xiangyang/goodsprocess.py-458-            self.factory_send_qty.setText(str(result[9]) if result[9] else '')
+--
+/home/erstd/projects/xiangyang/goodsprocess.py-527-                WHERE id=?
+/home/erstd/projects/xiangyang/goodsprocess.py-528-            '''
+/home/erstd/projects/xiangyang/goodsprocess.py-529-            
+/home/erstd/projects/xiangyang/goodsprocess.py-530-            params = (
+/home/erstd/projects/xiangyang/goodsprocess.py-531-                self.customer_name.text().strip(),
+/home/erstd/projects/xiangyang/goodsprocess.py-532-                self.customer_send_date.date().toString('yyyy-MM-dd'),
+/home/erstd/projects/xiangyang/goodsprocess.py-533-                self.customer_send_method.currentText(),
+/home/erstd/projects/xiangyang/goodsprocess.py-534-                customer_send_qty,
+/home/erstd/projects/xiangyang/goodsprocess.py-535-                factory_receive_qty,
+/home/erstd/projects/xiangyang/goodsprocess.py-536-                diff_receive,
+/home/erstd/projects/xiangyang/goodsprocess.py-537-                self.factory_send_date.date().toString('yyyy-MM-dd'),
+/home/erstd/projects/xiangyang/goodsprocess.py-538-                self.factory_send_method.currentText(),
+/home/erstd/projects/xiangyang/goodsprocess.py-539-                factory_send_qty,
+/home/erstd/projects/xiangyang/goodsprocess.py-540-                customer_receive_qty,
+/home/erstd/projects/xiangyang/goodsprocess.py-541-                diff_factory_customer,
+/home/erstd/projects/xiangyang/goodsprocess.py-542-                self.username,
+/home/erstd/projects/xiangyang/goodsprocess.py-543-                current_time,
+/home/erstd/projects/xiangyang/goodsprocess.py-544-                self.record_id
+/home/erstd/projects/xiangyang/goodsprocess.py-545-            )
+/home/erstd/projects/xiangyang/goodsprocess.py-546-        
+goodsprocess.py:547:        if self.db_manager.execute_query(query, params):
+/home/erstd/projects/xiangyang/goodsprocess.py-548-            QMessageBox.information(self, '成功', '数据保存成功！')
+/home/erstd/projects/xiangyang/goodsprocess.py-549-            self.accept()
+goodsprocess.py-550-        else:
+/home/erstd/projects/xiangyang/goodsprocess.py-551-            QMessageBox.critical(self, '错误', '数据保存失败！')
+--
+/home/erstd/projects/xiangyang/wage.py-1-import sqlite3
+/home/erstd/projects/xiangyang/wage.py-2-from datetime import datetime
+/home/erstd/projects/xiangyang/wage.py-3-from PyQt5.QtWidgets import (
+/home/erstd/projects/xiangyang/wage.py-4-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+/home/erstd/projects/xiangyang/wage.py-5-    QLabel, QLineEdit, QPushButton, QTableWidget, QTableWidgetItem,
+/home/erstd/projects/xiangyang/wage.py-6-    QMessageBox, QDialog, QTabWidget, QComboBox, QDateEdit, QHeaderView,
+/home/erstd/projects/xiangyang/wage.py-7-    QTextEdit, QGridLayout, QGroupBox, QSplitter, QFileDialog
+/home/erstd/projects/xiangyang/wage.py-8-)
+/home/erstd/projects/xiangyang/wage.py-9-from PyQt5.QtCore import Qt, QDate
+/home/erstd/projects/xiangyang/wage.py-10-from PyQt5.QtGui import QFont
+/home/erstd/projects/xiangyang/wage.py-11-
+/home/erstd/projects/xiangyang/wage.py-12-
+/home/erstd/projects/xiangyang/wage.py-13-
+wage.py-14-class WageCalculationTab(QWidget):
+/home/erstd/projects/xiangyang/wage.py-15-    """工资核算标签页"""
+/home/erstd/projects/xiangyang/wage.py-16-    
+wage.py:17:    def __init__(self, db_manager, user_role, username):
+/home/erstd/projects/xiangyang/wage.py-18-        super().__init__()
+wage.py:19:        self.db_manager = db_manager
+/home/erstd/projects/xiangyang/wage.py-20-        self.user_role = user_role
+/home/erstd/projects/xiangyang/wage.py-21-        self.username = username
+/home/erstd/projects/xiangyang/wage.py-22-        self.init_ui()
+/home/erstd/projects/xiangyang/wage.py-23-    
+wage.py-24-    def init_ui(self):
+/home/erstd/projects/xiangyang/wage.py-25-        layout = QVBoxLayout()
+/home/erstd/projects/xiangyang/wage.py-26-        
+/home/erstd/projects/xiangyang/wage.py-27-        # 按钮区域
+/home/erstd/projects/xiangyang/wage.py-28-        btn_layout = QHBoxLayout()
+/home/erstd/projects/xiangyang/wage.py-29-        refresh_btn = QPushButton('刷新')
+/home/erstd/projects/xiangyang/wage.py-30-        refresh_btn.clicked.connect(self.load_data)
+/home/erstd/projects/xiangyang/wage.py-31-        btn_layout.addWidget(refresh_btn)
+/home/erstd/projects/xiangyang/wage.py-32-        
+wage.py-33-        if self.user_role == 'finance':
+/home/erstd/projects/xiangyang/wage.py-34-            add_btn = QPushButton('添加记录')
+/home/erstd/projects/xiangyang/wage.py-35-            add_btn.clicked.connect(self.add_record)
+/home/erstd/projects/xiangyang/wage.py-36-            btn_layout.addWidget(add_btn)
+/home/erstd/projects/xiangyang/wage.py-37-        
+/home/erstd/projects/xiangyang/wage.py-38-        btn_layout.addStretch()
+/home/erstd/projects/xiangyang/wage.py-39-        layout.addLayout(btn_layout)
+--
+/home/erstd/projects/xiangyang/wage.py-43-        self.table.setColumnCount(6)
+/home/erstd/projects/xiangyang/wage.py-44-        self.table.setHorizontalHeaderLabels([
+/home/erstd/projects/xiangyang/wage.py-45-            'ID', '加工车间', '织片数量', '织片工资', '套口工资', '创建人'
+/home/erstd/projects/xiangyang/wage.py-46-        ])
+/home/erstd/projects/xiangyang/wage.py-47-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+/home/erstd/projects/xiangyang/wage.py-48-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+/home/erstd/projects/xiangyang/wage.py-49-        
+/home/erstd/projects/xiangyang/wage.py-50-        layout.addWidget(self.table)
+/home/erstd/projects/xiangyang/wage.py-51-        
+/home/erstd/projects/xiangyang/wage.py-52-        self.setLayout(layout)
+/home/erstd/projects/xiangyang/wage.py-53-        self.load_data()
+/home/erstd/projects/xiangyang/wage.py-54-    
+wage.py-55-    def load_data(self):
+/home/erstd/projects/xiangyang/wage.py-56-        """加载数据"""
+/home/erstd/projects/xiangyang/wage.py-57-        query = '''
+/home/erstd/projects/xiangyang/wage.py-58-            SELECT id, workshop_name, knitting_qty, knitting_wage,
+/home/erstd/projects/xiangyang/wage.py-59-                   overlock_wage, created_by
+/home/erstd/projects/xiangyang/wage.py-60-            FROM wage_calculation 
+/home/erstd/projects/xiangyang/wage.py-61-            ORDER BY id DESC
+/home/erstd/projects/xiangyang/wage.py-62-        '''
+wage.py:63:        results = self.db_manager.fetch_all(query)
+/home/erstd/projects/xiangyang/wage.py-64-        
+/home/erstd/projects/xiangyang/wage.py-65-        self.table.setRowCount(len(results))
+wage.py-66-        for row, data in enumerate(results):
+wage.py-67-            for col, value in enumerate(data):
+/home/erstd/projects/xiangyang/wage.py-68-                item = QTableWidgetItem(str(value) if value else '')
+/home/erstd/projects/xiangyang/wage.py-69-                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+/home/erstd/projects/xiangyang/wage.py-70-                self.table.setItem(row, col, item)
+/home/erstd/projects/xiangyang/wage.py-71-    
+wage.py-72-    def add_record(self):
+/home/erstd/projects/xiangyang/wage.py-73-        """添加记录"""
+wage.py:74:        dialog = WageCalculationDialog(self.db_manager, self.username)
+wage.py-75-        if dialog.exec_() == QDialog.Accepted:
+/home/erstd/projects/xiangyang/wage.py-76-            self.load_data()
+/home/erstd/projects/xiangyang/wage.py-77-
+/home/erstd/projects/xiangyang/wage.py-78-
+wage.py-79-class WageCalculationDialog(QDialog):
+/home/erstd/projects/xiangyang/wage.py-80-    """工资核算对话框"""
+/home/erstd/projects/xiangyang/wage.py-81-    
+wage.py:82:    def __init__(self, db_manager, username):
+/home/erstd/projects/xiangyang/wage.py-83-        super().__init__()
+wage.py:84:        self.db_manager = db_manager
+/home/erstd/projects/xiangyang/wage.py-85-        self.username = username
+/home/erstd/projects/xiangyang/wage.py-86-        self.init_ui()
+/home/erstd/projects/xiangyang/wage.py-87-    
+wage.py-88-    def init_ui(self):
+/home/erstd/projects/xiangyang/wage.py-89-        self.setWindowTitle('工资核算记录')
+/home/erstd/projects/xiangyang/wage.py-90-        self.setFixedSize(700, 600)
+/home/erstd/projects/xiangyang/wage.py-91-        
+/home/erstd/projects/xiangyang/wage.py-92-        layout = QVBoxLayout()
+/home/erstd/projects/xiangyang/wage.py-93-        
+/home/erstd/projects/xiangyang/wage.py-94-        # 车间信息
+/home/erstd/projects/xiangyang/wage.py-95-        workshop_group = QGroupBox('车间信息')
+/home/erstd/projects/xiangyang/wage.py-96-        workshop_layout = QGridLayout()
+/home/erstd/projects/xiangyang/wage.py-97-        
+/home/erstd/projects/xiangyang/wage.py-98-        self.workshop_name = QLineEdit()
+/home/erstd/projects/xiangyang/wage.py-99-        self.processing_date = QDateEdit()
+/home/erstd/projects/xiangyang/wage.py-100-        self.processing_date.setCalendarPopup(True)
+/home/erstd/projects/xiangyang/wage.py-101-        self.processing_date.setDate(QDate.currentDate())
+/home/erstd/projects/xiangyang/wage.py-102-        self.knitting_qty = QLineEdit()
+/home/erstd/projects/xiangyang/wage.py-103-        self.knitting_wage = QLineEdit()
+/home/erstd/projects/xiangyang/wage.py-104-        
+--
+/home/erstd/projects/xiangyang/wage.py-181-                hand_sewing_employee, hand_sewing_qty, hand_sewing_wage,
+/home/erstd/projects/xiangyang/wage.py-182-                created_by, created_date
+/home/erstd/projects/xiangyang/wage.py-183-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+/home/erstd/projects/xiangyang/wage.py-184-        '''
+/home/erstd/projects/xiangyang/wage.py-185-        
+/home/erstd/projects/xiangyang/wage.py-186-        params = (
+/home/erstd/projects/xiangyang/wage.py-187-            self.workshop_name.text().strip(),
+/home/erstd/projects/xiangyang/wage.py-188-            self.processing_date.date().toString('yyyy-MM-dd'),
+/home/erstd/projects/xiangyang/wage.py-189-            int(self.knitting_qty.text()) if self.knitting_qty.text() else 0,
+/home/erstd/projects/xiangyang/wage.py-190-            float(self.knitting_wage.text()) if self.knitting_wage.text() else 0.0,
+/home/erstd/projects/xiangyang/wage.py-191-            self.overlock_employee.text().strip(),
+/home/erstd/projects/xiangyang/wage.py-192-            int(self.overlock_qty.text()) if self.overlock_qty.text() else 0,
+/home/erstd/projects/xiangyang/wage.py-193-            float(self.overlock_wage.text()) if self.overlock_wage.text() else 0.0,
+/home/erstd/projects/xiangyang/wage.py-194-            self.sewing_employee.text().strip(),
+/home/erstd/projects/xiangyang/wage.py-195-            int(self.sewing_qty.text()) if self.sewing_qty.text() else 0,
+/home/erstd/projects/xiangyang/wage.py-196-            float(self.sewing_wage.text()) if self.sewing_wage.text() else 0.0,
+/home/erstd/projects/xiangyang/wage.py-197-            self.username,
+/home/erstd/projects/xiangyang/wage.py-198-            current_time
+/home/erstd/projects/xiangyang/wage.py-199-        )
+/home/erstd/projects/xiangyang/wage.py-200-        
+wage.py:201:        if self.db_manager.execute_query(query, params):
+/home/erstd/projects/xiangyang/wage.py-202-            QMessageBox.information(self, '成功', '工资记录保存成功！')
+/home/erstd/projects/xiangyang/wage.py-203-            self.accept()
+wage.py-204-        else:
+/home/erstd/projects/xiangyang/wage.py-205-            QMessageBox.critical(self, '错误', '保存失败！')

@@ -1,0 +1,157 @@
+package stress
+
+import (
+	"chatapp/backend/config"
+	"chatapp/backend/protocal"
+	"fmt"
+	"log"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/gogo/protobuf/proto"
+	"github.com/gorilla/websocket"
+)
+
+func connectClient(userID string) (*websocket.Conn, error) {
+	dialer := websocket.DefaultDialer
+	conn, _, err := dialer.Dial("ws://localhost:8080/ws", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
+}
+
+func runClient(b *testing.B, wg *sync.WaitGroup, clientID int) {
+	defer wg.Done()
+
+	userID := fmt.Sprintf("user_%d", clientID)
+	conn, err := connectClient(userID)
+	if err != nil {
+		b.Errorf("client %d connect failed: %v", clientID, err)
+		return
+	}
+	defer conn.Close()
+
+	// 启动 reader goroutine
+	done := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				_, _, err := conn.ReadMessage()
+				if err != nil {
+					return
+				}
+			}
+		}
+	}()
+
+	// 发送消息
+	msg := &protocol.Message{
+		ContentType: config.TEXT,
+		Content:     fmt.Sprintf("hello from %s", userID),
+		From:        userID,
+		To:          "all",
+		MessageType: config.MESSAGE_TYPE_USER,
+	}
+	msgData, _ := proto.Marshal(msg)
+
+	for i := 0; i < b.N; i++ {
+		if err := conn.WriteMessage(websocket.BinaryMessage, msgData); err != nil {
+			b.Errorf("client %d write failed: %v", clientID, err)
+			return
+		}
+	}
+
+	close(done)
+}
+
+func BenchmarkWebSocket(b *testing.B) {
+	clientCount := 100 // 并发客户端数
+
+	var wg sync.WaitGroup
+	wg.Add(clientCount)
+
+	b.ResetTimer()
+
+	for i := 0; i < clientCount; i++ {
+		go runClient(b, &wg, i)
+	}
+
+	wg.Wait()
+}
+
+func TestStressWebSocket(t *testing.T) {
+	clientCount := 50
+	messagePerClient := 10
+
+	var wg sync.WaitGroup
+	wg.Add(clientCount)
+
+	startTime := time.Now()
+
+	for i := 0; i < clientCount; i++ {
+		go func(id int) {
+			defer wg.Done()
+
+			userID := fmt.Sprintf("user_%d", id)
+			conn, err := connectClient(userID)
+			if err != nil {
+				log.Printf("client %d connect failed: %v", id, err)
+				return
+			}
+			defer conn.Close()
+
+			// reader
+			done := make(chan struct{})
+			go func() {
+				for {
+					select {
+					case <-done:
+						return
+					default:
+						conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+						_, _, err := conn.ReadMessage()
+						if err != nil {
+							return
+						}
+					}
+				}
+			}()
+
+			// send messages
+			for j := 0; j < messagePerClient; j++ {
+				msg := &protocol.Message{
+					ContentType: config.TEXT,
+					Content:     fmt.Sprintf("msg %d from %s", j, userID),
+					From:        userID,
+					To:          "all",
+					MessageType: config.MESSAGE_TYPE_USER,
+				}
+				msgData, _ := proto.Marshal(msg)
+				if err := conn.WriteMessage(websocket.BinaryMessage, msgData); err != nil {
+					log.Printf("client %d write failed: %v", id, err)
+					return
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+
+			close(done)
+		}(i)
+	}
+
+	wg.Wait()
+
+	elapsed := time.Since(startTime)
+	totalMsgs := clientCount * messagePerClient
+	fmt.Printf("\n===== Stress Test Result =====\n")
+	fmt.Printf("Clients: %d\n", clientCount)
+	fmt.Printf("Messages per client: %d\n", messagePerClient)
+	fmt.Printf("Total messages: %d\n", totalMsgs)
+	fmt.Printf("Duration: %v\n", elapsed)
+	fmt.Printf("Throughput: %.2f msgs/sec\n", float64(totalMsgs)/elapsed.Seconds())
+}

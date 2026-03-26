@@ -1,0 +1,41 @@
+package kafka
+
+import (
+	"chatapp/backend/log"
+	"errors"
+	"sync"
+)
+
+var (
+	messageQueue = make(chan []byte, 1000)
+	queueMu      sync.Mutex
+)
+
+func Send(data []byte) error {
+	if len(data) == 0 {
+		return errors.New("kafka payload is empty")
+	}
+
+	queueMu.Lock()
+	select {
+	case messageQueue <- data:
+		queueMu.Unlock()
+		log.Logger.Debug("message enqueued")
+		return nil
+	default:
+		queueMu.Unlock()
+		return errors.New("message queue is full")
+	}
+}
+
+func getMessageQueue() <-chan []byte {
+	return messageQueue
+}
+
+func InitProducer(topic string, hosts []string) {
+	log.Logger.Info(
+		"init kafka producer (in-memory fallback)",
+		log.String("topic", topic),
+		log.Any("hosts", hosts),
+	)
+}

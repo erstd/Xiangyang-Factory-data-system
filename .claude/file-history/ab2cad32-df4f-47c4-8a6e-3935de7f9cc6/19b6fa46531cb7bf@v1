@@ -1,0 +1,104 @@
+"""
+多源文献检索服务
+集成 arXiv, PubMed, Semantic Scholar 等
+"""
+from langchain.tools import Tool
+from typing import List, Dict, Any, Optional
+
+
+class LiteratureSearchService:
+    """文献检索服务类"""
+
+    def __init__(self, api_keys: Optional[Dict[str, str]] = None):
+        """
+        初始化文献检索服务
+
+        Args:
+            api_keys: 各数据源的 API 密钥
+        """
+        self.api_keys = api_keys or {}
+        self.sources = ['arxiv', 'pubmed', 'semantic_scholar']
+
+    def search_arxiv(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        搜索 arXiv 论文
+
+        Args:
+            query: 搜索关键词
+            limit: 返回结果数量
+
+        Returns:
+            论文列表
+        """
+        # TODO: 实现 arXiv API 调用
+        print(f"Searching arXiv for: {query}")
+        return []
+
+    def search_pubmed(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        搜索 PubMed 论文
+
+        Args:
+            query: 搜索关键词
+            limit: 返回结果数量
+
+        Returns:
+            论文列表
+        """
+        # TODO: 实现 PubMed API 调用
+        print(f"Searching PubMed for: {query}")
+        return []
+
+    def search_semantic_scholar(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        搜索 Semantic Scholar 论文
+
+        Args:
+            query: 搜索关键词
+            limit: 返回结果数量
+
+        Returns:
+            论文列表
+        """
+        # TODO: 实现 Semantic Scholar API 调用
+        print(f"Searching Semantic Scholar for: {query}")
+        return []
+
+    def multi_source_search(self, query: str, sources: Optional[List[str]] = None, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        多源文献检索
+
+        Args:
+            query: 搜索关键词
+            sources: 指定的数据源列表，默认全部
+            limit: 每个源返回结果数量
+
+        Returns:
+            合并后的论文列表
+        """
+        if sources is None:
+            sources = self.sources
+
+        results = []
+        for source in sources:
+            if source == 'arxiv':
+                results.extend(self.search_arxiv(query, limit))
+            elif source == 'pubmed':
+                results.extend(self.search_pubmed(query, limit))
+            elif source == 'semantic_scholar':
+                results.extend(self.search_semantic_scholar(query, limit))
+
+        return results
+
+    def get_search_tool(self) -> Tool:
+        """
+        获取 LangChain 工具
+
+        Returns:
+            LangChain Tool 对象
+        """
+        return Tool(
+            name="literature_search",
+            func=self.multi_source_search,
+            description="Search academic papers from multiple sources (arXiv, PubMed, Semantic Scholar)"
+        )

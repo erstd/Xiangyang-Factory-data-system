@@ -1,0 +1,31 @@
+package kafka
+
+import (
+	"chatapp/backend/log"
+	"errors"
+)
+
+func Send(data []byte) error {
+	if len(data) == 0 {
+		return errors.New("kafka payload is empty")
+	}
+
+	consumerMu.RLock()
+	callback := consumerCallback
+	consumerMu.RUnlock()
+
+	if callback == nil {
+		return errors.New("kafka consumer callback is not initialized")
+	}
+
+	callback(data)
+	return nil
+}
+
+func InitProducer(topic string, hosts []string) {
+	log.Logger.Info(
+		"init kafka producer (in-memory fallback)",
+		log.String("topic", topic),
+		log.Any("hosts", hosts),
+	)
+}

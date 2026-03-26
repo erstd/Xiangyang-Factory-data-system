@@ -1,0 +1,32 @@
+@echo off
+chcp 65001 >/dev/null
+echo 启动向阳厂管理系统...
+
+REM 检查 Python 依赖
+python -c "import flask" 2>/dev/null
+if errorlevel 1 (
+    echo 正在安装 Python 依赖...
+    pip install -r requirements.txt
+)
+
+REM 启动后端服务器
+echo 启动后端 API 服务器...
+start /B python api_server.py
+
+REM 等待后端启动
+timeout /t 3 /nobreak >/dev/null
+
+REM 进入前端目录
+cd electron-app
+
+REM 检查 Node 依赖
+if not exist "node_modules" (
+    echo 正在安装前端依赖...
+    call npm install
+)
+
+REM 启动 Electron 应用
+echo 启动 Electron 应用...
+npm start
+
+REM 脚本结束时会自动关闭后台 Python 进程

@@ -1,0 +1,211 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  color: #212121;
+  background-color: #FAFAFA;
+}
+
+/* 按钮样式 */
+.btn {
+  padding: 8px 16px;
+  border: 1px solid #BDBDBD;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.btn:hover {
+  opacity: 0.8;
+}
+
+.btn-primary {
+  background: #409EFF;
+  color: white;
+  border-color: #409EFF;
+}
+
+.btn-success {
+  background: #67C23A;
+  color: white;
+  border-color: #67C23A;
+}
+
+.btn-warning {
+  background: #E6A23C;
+  color: white;
+  border-color: #E6A23C;
+}
+
+.btn-danger {
+  background: #F56C6C;
+  color: white;
+  border-color: #F56C6C;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 卡片样式 */
+.card {
+  background: white;
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+/* 表单样式 */
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+select,
+textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #DCDFE6;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #409EFF;
+}
+
+label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+/* 对话框样式 */
+.dialog {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog.show {
+  display: flex;
+}
+
+.dialog-content {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #E0E0E0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dialog-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.dialog-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #757575;
+}
+
+.dialog-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.dialog-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #E0E0E0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* 表格样式 */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table th,
+table td {
+  padding: 12px 8px;
+  text-align: left;
+  border: 1px solid #EBEEF5;
+}
+
+table th {
+  background: #F5F7FA;
+  font-weight: 600;
+  color: #212121;
+}
+
+table tbody tr:nth-child(even) {
+  background: #FAFAFA;
+}
+
+table tbody tr:hover {
+  background: #F5F7FA;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  max-height: calc(100vh - 420px);
+}
+
+/* 分隔线 */
+.divider {
+  margin: 16px 0;
+  padding: 8px 0;
+  font-weight: 600;
+  color: #616161;
+  border-bottom: 1px solid #E0E0E0;
+}
+
+/* 表单行 */
+.form-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+
+.form-item {
+  flex: 1;
+}
+
+.form-section {
+  margin-bottom: 16px;
+}

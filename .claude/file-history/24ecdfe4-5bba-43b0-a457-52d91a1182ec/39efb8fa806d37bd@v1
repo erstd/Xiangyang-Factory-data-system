@@ -1,0 +1,1444 @@
+class ProtobufMessageCodec {
+  constructor() {
+    this.textEncoder = new TextEncoder();
+    this.textDecoder = new TextDecoder();
+  }
+
+  encode(message) {
+    const chunks = [];
+
+    this.pushStringField(chunks, 1, message.avatar);
+    this.pushStringField(chunks, 2, message.fromUsername);
+    this.pushStringField(chunks, 3, message.from);
+    this.pushStringField(chunks, 4, message.to);
+    this.pushStringField(chunks, 5, message.content);
+    this.pushInt32Field(chunks, 6, message.contentType);
+    this.pushStringField(chunks, 7, message.type);
+    this.pushInt32Field(chunks, 8, message.messageType);
+    this.pushStringField(chunks, 9, message.url);
+    this.pushStringField(chunks, 10, message.fileSuffix);
+    this.pushBytesField(chunks, 11, message.file);
+
+    return this.concatUint8Arrays(chunks);
+  }
+
+  decode(payload) {
+    const bytes = this.toUint8Array(payload);
+    const result = {
+      avatar: "",
+      fromUsername: "",
+      from: "",
+      to: "",
+      content: "",
+      contentType: 0,
+      type: "",
+      messageType: 0,
+      url: "",
+      fileSuffix: "",
+      file: new Uint8Array(),
+    };
+
+    let offset = 0;
+    while (offset < bytes.length) {
+      const keyInfo = this.readVarint(bytes, offset);
+      const key = keyInfo.value;
+      offset = keyInfo.offset;
+
+      const fieldNum = key >>> 3;
+      const wireType = key & 0x7;
+
+      switch (fieldNum) {
+        case 1:
+          ({ value: result.avatar, offset } = this.readString(bytes, offset, wireType));
+          break;
+        case 2:
+          ({ value: result.fromUsername, offset } = this.readString(bytes, offset, wireType));
+          break;
+        case 3:
+          ({ value: result.from, offset } = this.readString(bytes, offset, wireType));
+          break;
+        case 4:
+          ({ value: result.to, offset } = this.readString(bytes, offset, wireType));
+          break;
+        case 5:
+          ({ value: result.content, offset } = this.readString(bytes, offset, wireType));
+          break;
+        case 6:
+          ({ value: result.contentType, offset } = this.readInt32(bytes, offset, wireType));
+          break;
+        case 7:
+          ({ value: result.type, offset } = this.readString(bytes, offset, wireType));
+          break;
+        case 8:
+          ({ value: result.messageType, offset } = this.readInt32(bytes, offset, wireType));
+          break;
+        case 9:
+          ({ value: result.url, offset } = this.readString(bytes, offset, wireType));
+          break;
+        case 10:
+          ({ value: result.fileSuffix, offset } = this.readString(bytes, offset, wireType));
+          break;
+        case 11:
+          ({ value: result.file, offset } = this.readBytes(bytes, offset, wireType));
+          break;
+        default:
+          offset = this.skipUnknown(bytes, offset, wireType);
+          break;
+      }
+    }
+
+    return result;
+  }
+
+  toUint8Array(payload) {
+    if (payload instanceof Uint8Array) {
+      return payload;
+    }
+    if (payload instanceof ArrayBuffer) {
+      return new Uint8Array(payload);
+    }
+    if (ArrayBuffer.isView(payload)) {
+      return new Uint8Array(payload.buffer, payload.byteOffset, payload.byteLength);
+    }
+    throw new Error("Unsupported protobuf payload type");
+  }
+
+  pushStringField(chunks, fieldNum, value) {
+    if (typeof value !== "string" || value.length === 0) {
+      return;
+    }
+    const bytes = this.textEncoder.encode(value);
+    this.pushKey(chunks, fieldNum, 2);
+    chunks.push(this.encodeVarint(bytes.length));
+    chunks.push(bytes);
+  }
+
+  pushBytesField(chunks, fieldNum, value) {
+    if (!(value instanceof Uint8Array) || value.length === 0) {
+      return;
+    }
+    this.pushKey(chunks, fieldNum, 2);
+    chunks.push(this.encodeVarint(value.length));
+    chunks.push(value);
+  }
+
+  pushInt32Field(chunks, fieldNum, value) {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return;
+    }
+    this.pushKey(chunks, fieldNum, 0);
+    chunks.push(this.encodeVarint(value >>> 0));
+  }
+
+  pushKey(chunks, fieldNum, wireType) {
+    chunks.push(this.encodeVarint((fieldNum << 3) | wireType));
+  }
+
+  encodeVarint(value) {
+    let num = value >>> 0;
+    const out = [];
+    while (num > 127) {
+      out.push((num & 0x7f) | 0x80);
+      num >>>= 7;
+    }
+    out.push(num);
+    return new Uint8Array(out);
+  }
+
+  readVarint(bytes, offset) {
+    let value = 0;
+    let shift = 0;
+    let cursor = offset;
+
+    while (cursor < bytes.length) {
+      const b = bytes[cursor];
+      cursor += 1;
+      value |= (b & 0x7f) << shift;
+      if ((b & 0x80) === 0) {
+        return { value: value >>> 0, offset: cursor };
+      }
+      shift += 7;
+      if (shift > 35) {
+        throw new Error("Invalid varint");
+      }
+    }
+
+    throw new Error("Unexpected EOF while reading varint");
+  }
+
+  readString(bytes, offset, wireType) {
+    if (wireType !== 2) {
+      return { value: "", offset: this.skipUnknown(bytes, offset, wireType) };
+    }
+    const lenInfo = this.readVarint(bytes, offset);
+    const length = lenInfo.value;
+    const start = lenInfo.offset;
+    const end = start + length;
+    if (end > bytes.length) {
+      throw new Error("Invalid string length");
+    }
+    return {
+      value: this.textDecoder.decode(bytes.subarray(start, end)),
+      offset: end,
+    };
+  }
+
+  readBytes(bytes, offset, wireType) {
+    if (wireType !== 2) {
+      return { value: new Uint8Array(), offset: this.skipUnknown(bytes, offset, wireType) };
+    }
+    const lenInfo = this.readVarint(bytes, offset);
+    const length = lenInfo.value;
+    const start = lenInfo.offset;
+    const end = start + length;
+    if (end > bytes.length) {
+      throw new Error("Invalid bytes length");
+    }
+    return {
+      value: bytes.subarray(start, end),
+      offset: end,
+    };
+  }
+
+  readInt32(bytes, offset, wireType) {
+    if (wireType !== 0) {
+      return { value: 0, offset: this.skipUnknown(bytes, offset, wireType) };
+    }
+    const info = this.readVarint(bytes, offset);
+    return { value: info.value | 0, offset: info.offset };
+  }
+
+  skipUnknown(bytes, offset, wireType) {
+    switch (wireType) {
+      case 0: {
+        return this.readVarint(bytes, offset).offset;
+      }
+      case 1: {
+        const end = offset + 8;
+        if (end > bytes.length) {
+          throw new Error("Invalid 64-bit field");
+        }
+        return end;
+      }
+      case 2: {
+        const lenInfo = this.readVarint(bytes, offset);
+        const end = lenInfo.offset + lenInfo.value;
+        if (end > bytes.length) {
+          throw new Error("Invalid length-delimited field");
+        }
+        return end;
+      }
+      case 5: {
+        const end = offset + 4;
+        if (end > bytes.length) {
+          throw new Error("Invalid 32-bit field");
+        }
+        return end;
+      }
+      default:
+        throw new Error(`Unsupported wire type: ${wireType}`);
+    }
+  }
+
+  concatUint8Arrays(chunks) {
+    let totalLength = 0;
+    for (const chunk of chunks) {
+      totalLength += chunk.length;
+    }
+    const result = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      result.set(chunk, offset);
+      offset += chunk.length;
+    }
+    return result;
+  }
+}
+
+class ChatApp {
+  constructor() {
+    this.codec = new ProtobufMessageCodec();
+
+    this.ws = null;
+    this.currentUser = null;
+    this.currentConversationKey = "broadcast";
+    this.aiConversationKey = "ai:assistant";
+
+    this.conversations = new Map();
+    this.messagesByConversation = new Map();
+
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+    this.reconnectDelay = 3000;
+
+    this.loginListenersBound = false;
+    this.mainListenersBound = false;
+
+    this.heartbeatTimer = null;
+    this.onlineStatusTimer = null;
+
+    this.elements = {};
+    this.init();
+  }
+
+  init() {
+    this.bindWindowControls();
+    this.showLogin();
+  }
+
+  bindWindowControls() {
+    const wire = (id, fn) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener("click", fn);
+      }
+    };
+    if (window.windowCtl) {
+      wire("tbMin", () => window.windowCtl.minimize());
+      wire("tbMax", () => window.windowCtl.maximizeToggle());
+      wire("tbClose", () => window.windowCtl.close());
+    }
+  }
+
+  showLogin() {
+    const loginContainer = document.getElementById("loginContainer");
+    const appContainer = document.getElementById("appContainer");
+
+    if (loginContainer) loginContainer.style.display = "flex";
+    if (appContainer) appContainer.style.display = "none";
+
+    this.setupLoginListeners();
+  }
+
+  showMainApp() {
+    const loginContainer = document.getElementById("loginContainer");
+    const appContainer = document.getElementById("appContainer");
+
+    if (loginContainer) loginContainer.style.display = "none";
+    if (appContainer) appContainer.style.display = "flex";
+
+    this.initMainApp();
+  }
+
+  setupLoginListeners() {
+    if (this.loginListenersBound) {
+      return;
+    }
+    this.loginListenersBound = true;
+
+    const loginButton = document.getElementById("loginButton");
+    const loginUsername = document.getElementById("loginUsername");
+    const loginPassword = document.getElementById("loginPassword");
+    const showRegisterLink = document.getElementById("showRegister");
+    const showLoginLink = document.getElementById("showLogin");
+    const registerButton = document.getElementById("registerButton");
+    const passwordToggle = document.getElementById("passwordToggle");
+
+    if (loginButton) {
+      loginButton.addEventListener("click", () => this.handleLogin());
+    }
+    if (registerButton) {
+      registerButton.addEventListener("click", () => this.handleRegister());
+    }
+    if (showRegisterLink) {
+      showRegisterLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.toggleForms("register");
+      });
+    }
+    if (showLoginLink) {
+      showLoginLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.toggleForms("login");
+      });
+    }
+    if (loginUsername) {
+      loginUsername.addEventListener("keypress", (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        if (loginPassword && !loginPassword.value.trim()) {
+          loginPassword.focus();
+        } else {
+          this.handleLogin();
+        }
+      });
+      setTimeout(() => loginUsername.focus(), 100);
+    }
+    if (loginPassword) {
+      loginPassword.addEventListener("keypress", (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        this.handleLogin();
+      });
+    }
+    if (passwordToggle && loginPassword) {
+      passwordToggle.addEventListener("click", () => {
+        const nowType = loginPassword.getAttribute("type");
+        const nextType = nowType === "password" ? "text" : "password";
+        loginPassword.setAttribute("type", nextType);
+        const icon = passwordToggle.querySelector(".password-toggle-icon");
+        if (icon) {
+          icon.textContent = nextType === "password" ? "👁️" : "🙈";
+        }
+      });
+    }
+  }
+
+  async handleLogin() {
+    const registerVisible = document.getElementById("registerForm")?.style.display !== "none";
+    if (registerVisible) {
+      this.toggleForms("login");
+      return;
+    }
+
+    const loginUsername = document.getElementById("loginUsername");
+    const loginPassword = document.getElementById("loginPassword");
+    const username = loginUsername?.value.trim() || "";
+    const password = loginPassword?.value.trim() || "";
+
+    if (!username) {
+      this.showLoginError("请输入用户名");
+      loginUsername?.focus();
+      return;
+    }
+    if (username.length < 2 || username.length > 20) {
+      this.showLoginError("用户名长度需为 2-20 个字符");
+      loginUsername?.focus();
+      return;
+    }
+    if (!password) {
+      this.showLoginError("请输入密码");
+      loginPassword?.focus();
+      return;
+    }
+    if (password.length < 6 || password.length > 50) {
+      this.showLoginError("密码长度需为 6-50 个字符");
+      loginPassword?.focus();
+      return;
+    }
+
+    const ok = await this.loginViaBackend(username, password);
+    if (!ok && loginPassword) {
+      loginPassword.value = "";
+      loginPassword.focus();
+    }
+  }
+
+  async handleRegister() {
+    const regUsername = document.getElementById("regUsername");
+    const regPassword = document.getElementById("regPassword");
+    const regNickname = document.getElementById("regNickname");
+    const regEmail = document.getElementById("regEmail");
+
+    const username = regUsername?.value.trim() || "";
+    const password = regPassword?.value.trim() || "";
+    const nickname = regNickname?.value.trim() || "";
+    const email = regEmail?.value.trim() || "";
+
+    if (!username) {
+      this.showRegisterError("请输入用户名");
+      regUsername?.focus();
+      return;
+    }
+    if (username.length < 2 || username.length > 20) {
+      this.showRegisterError("用户名长度需 2-20 字符");
+      regUsername?.focus();
+      return;
+    }
+    if (!password) {
+      this.showRegisterError("请输入密码");
+      regPassword?.focus();
+      return;
+    }
+    if (password.length < 6 || password.length > 50) {
+      this.showRegisterError("密码长度需 6-50 字符");
+      regPassword?.focus();
+      return;
+    }
+
+    const ok = await this.registerViaBackend(username, password, nickname, email);
+    if (!ok) {
+      return;
+    }
+
+    this.toggleForms("login");
+    const loginUsername = document.getElementById("loginUsername");
+    const loginPassword = document.getElementById("loginPassword");
+    if (loginUsername) loginUsername.value = username;
+    if (loginPassword) loginPassword.value = "";
+    this.showLoginError("注册成功，请登录");
+  }
+
+  async loginViaBackend(username, password) {
+    try {
+      const resp = await this.fetchJson("/user/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!resp || resp.code !== 0 || !resp.data) {
+        this.showLoginError(resp?.msg || "登录失败");
+        return false;
+      }
+
+      const data = resp.data;
+      const uuid = (data.uuid || "").trim();
+      if (!uuid) {
+        this.showLoginError("登录返回缺少用户 UUID");
+        return false;
+      }
+
+      this.currentUser = {
+        uuid,
+        username: (data.username || username || "").trim(),
+        nickname: (data.nickname || data.username || username || "").trim(),
+        avatar: (data.avatar || "").trim(),
+      };
+      localStorage.setItem("chatApp_user", JSON.stringify(this.currentUser));
+
+      this.showMainApp();
+      return true;
+    } catch (err) {
+      console.warn("loginViaBackend failed:", err);
+      this.showLoginError("登录失败：请确认后端已启动");
+      return false;
+    }
+  }
+
+  async registerViaBackend(username, password, nickname, email) {
+    try {
+      const resp = await this.fetchJson("/user/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, nickname, email }),
+      });
+
+      if (!resp || resp.code !== 0) {
+        this.showRegisterError(resp?.msg || "注册失败");
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.warn("registerViaBackend failed:", err);
+      this.showRegisterError("注册失败：请确认后端已启动");
+      return false;
+    }
+  }
+
+  showLoginError(message) {
+    const loginError = document.getElementById("loginError");
+    if (!loginError) return;
+    loginError.textContent = message;
+    loginError.classList.add("show");
+    setTimeout(() => loginError.classList.remove("show"), 3000);
+  }
+
+  showRegisterError(message) {
+    const registerError = document.getElementById("registerError");
+    if (!registerError) return;
+    registerError.textContent = message;
+    registerError.classList.add("show");
+    setTimeout(() => registerError.classList.remove("show"), 3000);
+  }
+
+  toggleForms(show) {
+    const loginForm = document.getElementById("loginForm");
+    const registerForm = document.getElementById("registerForm");
+    const headerText = document.getElementById("loginHeaderText");
+
+    if (show === "register") {
+      if (loginForm) loginForm.style.display = "none";
+      if (registerForm) registerForm.style.display = "block";
+      if (headerText) headerText.textContent = "注册新账号";
+      return;
+    }
+
+    if (loginForm) loginForm.style.display = "block";
+    if (registerForm) registerForm.style.display = "none";
+    if (headerText) headerText.textContent = "欢迎回来，请登录";
+  }
+
+  initMainApp() {
+    this.elements = {
+      chatMessages: document.getElementById("chatMessages"),
+      messageInput: document.getElementById("messageInput"),
+      sendButton: document.getElementById("sendButton"),
+      statusText: document.getElementById("statusText"),
+      statusDot: document.querySelector(".status-dot"),
+      chatTitle: document.getElementById("chatTitle"),
+      userName: document.getElementById("userName"),
+      userAvatar: document.getElementById("userAvatar"),
+      friendsList: document.getElementById("friendsList"),
+      openAiAssistantButton: document.getElementById("openAiAssistantButton"),
+      startChatUsername: document.getElementById("startChatUsername"),
+      startChatButton: document.getElementById("startChatButton"),
+      createGroupName: document.getElementById("createGroupName"),
+      createGroupNotice: document.getElementById("createGroupNotice"),
+      createGroupButton: document.getElementById("createGroupButton"),
+      joinGroupUuid: document.getElementById("joinGroupUuid"),
+      joinGroupButton: document.getElementById("joinGroupButton"),
+      sidebarActionHint: document.getElementById("sidebarActionHint"),
+    };
+
+    this.ensureDefaultConversations();
+    this.renderConversationList();
+    this.selectConversation("broadcast");
+    this.updateUserInfo();
+    this.setupMainListeners();
+    this.connect();
+  }
+
+  setupMainListeners() {
+    if (this.mainListenersBound) {
+      return;
+    }
+    this.mainListenersBound = true;
+
+    if (this.elements.sendButton) {
+      this.elements.sendButton.addEventListener("click", () => this.sendMessage());
+    }
+
+    if (this.elements.messageInput) {
+      this.elements.messageInput.addEventListener("keypress", (e) => {
+        if (e.key !== "Enter" || e.shiftKey) return;
+        e.preventDefault();
+        this.sendMessage();
+      });
+    }
+
+    if (this.elements.startChatButton) {
+      this.elements.startChatButton.addEventListener("click", () => this.handleStartChatByUsername());
+    }
+    if (this.elements.openAiAssistantButton) {
+      this.elements.openAiAssistantButton.addEventListener("click", () => this.handleOpenAIAssistant());
+    }
+    if (this.elements.startChatUsername) {
+      this.elements.startChatUsername.addEventListener("keypress", (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        this.handleStartChatByUsername();
+      });
+    }
+
+    if (this.elements.createGroupButton) {
+      this.elements.createGroupButton.addEventListener("click", () => this.handleCreateGroup());
+    }
+    if (this.elements.createGroupName) {
+      this.elements.createGroupName.addEventListener("keypress", (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        this.handleCreateGroup();
+      });
+    }
+    if (this.elements.createGroupNotice) {
+      this.elements.createGroupNotice.addEventListener("keypress", (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        this.handleCreateGroup();
+      });
+    }
+
+    if (this.elements.joinGroupButton) {
+      this.elements.joinGroupButton.addEventListener("click", () => this.handleJoinGroup());
+    }
+    if (this.elements.joinGroupUuid) {
+      this.elements.joinGroupUuid.addEventListener("keypress", (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        this.handleJoinGroup();
+      });
+    }
+  }
+
+  updateUserInfo() {
+    if (!this.currentUser) {
+      return;
+    }
+
+    if (this.elements.userName) {
+      this.elements.userName.textContent = this.currentUser.nickname || this.currentUser.username;
+    }
+    if (this.elements.userAvatar) {
+      const source = this.currentUser.nickname || this.currentUser.username || "?";
+      this.elements.userAvatar.textContent = source.slice(0, 1).toUpperCase();
+    }
+  }
+
+  ensureDefaultConversations() {
+    this.ensureConversation({
+      key: "broadcast",
+      type: "broadcast",
+      target: "",
+      label: "所有人",
+      status: "大厅",
+      unread: 0,
+    });
+    this.ensureConversation({
+      key: this.aiConversationKey,
+      type: "assistant",
+      target: "assistant",
+      label: "AI 助手",
+      status: "大模型",
+      unread: 0,
+    });
+  }
+
+  ensureConversation(conversation) {
+    const existed = this.conversations.get(conversation.key);
+    if (existed) {
+      this.conversations.set(conversation.key, { ...existed, ...conversation });
+      return;
+    }
+    this.conversations.set(conversation.key, { ...conversation });
+  }
+
+  ensureUserConversation(userUUID, label) {
+    if (!userUUID || userUUID === this.currentUser?.uuid) {
+      return;
+    }
+    const existed = this.conversations.get(`user:${userUUID}`);
+    const finalLabel = existed?.label || label || userUUID;
+    this.ensureConversation({
+      key: `user:${userUUID}`,
+      type: "user",
+      target: userUUID,
+      label: finalLabel,
+      status: existed?.status || "离线",
+      unread: 0,
+    });
+  }
+
+  ensureGroupConversation(groupUUID) {
+    if (!groupUUID) {
+      return;
+    }
+    const existed = this.conversations.get(`group:${groupUUID}`);
+    const finalLabel = existed?.label || `群聊 ${groupUUID.slice(0, 8)}`;
+    this.ensureConversation({
+      key: `group:${groupUUID}`,
+      type: "group",
+      target: groupUUID,
+      label: finalLabel,
+      status: existed?.status || "群",
+      unread: 0,
+    });
+  }
+
+  setSidebarHint(message, isError = false) {
+    const hint = this.elements.sidebarActionHint;
+    if (!hint) {
+      return;
+    }
+    hint.textContent = message || "";
+    if (isError) {
+      hint.classList.add("error");
+    } else {
+      hint.classList.remove("error");
+    }
+  }
+
+  async handleStartChatByUsername() {
+    const username = this.elements.startChatUsername?.value.trim() || "";
+    if (!username) {
+      this.setSidebarHint("请输入用户名", true);
+      return;
+    }
+
+    try {
+      const resp = await this.fetchJson(`/user/name?name=${encodeURIComponent(username)}`);
+      if (!resp || resp.code !== 0 || !resp.data) {
+        this.setSidebarHint(resp?.msg || "用户不存在", true);
+        return;
+      }
+
+      const userData = resp.data;
+      const userUUID = (userData.uuid || "").trim();
+      if (!userUUID) {
+        this.setSidebarHint("目标用户缺少 UUID", true);
+        return;
+      }
+      if (userUUID === this.currentUser?.uuid) {
+        this.setSidebarHint("不能和自己发起会话", true);
+        return;
+      }
+
+      const label = (userData.nickname || userData.username || userUUID).trim();
+      this.ensureUserConversation(userUUID, label);
+      this.renderConversationList();
+      await this.selectConversation(`user:${userUUID}`);
+      this.elements.startChatUsername.value = "";
+      this.setSidebarHint(`已进入会话：${label}`);
+    } catch (err) {
+      console.warn("start chat by username failed:", err);
+      this.setSidebarHint("发起会话失败", true);
+    }
+  }
+  async handleOpenAIAssistant() {
+    this.ensureDefaultConversations();
+    this.renderConversationList();
+    await this.selectConversation(this.aiConversationKey);
+    this.setSidebarHint("已切换到 AI 助手");
+    this.elements.messageInput?.focus();
+  }
+
+  async handleCreateGroup() {
+    const groupName = this.elements.createGroupName?.value.trim() || "";
+    const groupNotice = this.elements.createGroupNotice?.value.trim() || "";
+
+    if (!groupName) {
+      this.setSidebarHint("请输入群名称", true);
+      return;
+    }
+    if (!this.currentUser?.uuid) {
+      this.setSidebarHint("请先登录", true);
+      return;
+    }
+
+    try {
+      const createResp = await this.fetchJson("/group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: groupName,
+          notice: groupNotice,
+        }),
+      });
+
+      if (!createResp || createResp.code !== 0 || !createResp.data) {
+        this.setSidebarHint(createResp?.msg || "创建群组失败", true);
+        return;
+      }
+
+      const groupUUID = (createResp.data.uuid || "").trim();
+      if (!groupUUID) {
+        this.setSidebarHint("创建成功但未返回群 UUID", true);
+        return;
+      }
+
+      const joinResp = await this.fetchJson(
+        `/group/join/${encodeURIComponent(this.currentUser.uuid)}/${encodeURIComponent(groupUUID)}`,
+        { method: "POST" },
+      );
+      if (!joinResp || joinResp.code !== 0) {
+        this.setSidebarHint(`群已创建，但自动加入失败：${joinResp?.msg || "未知错误"}`, true);
+      }
+
+      this.ensureConversation({
+        key: `group:${groupUUID}`,
+        type: "group",
+        target: groupUUID,
+        label: groupName,
+        status: "群",
+        unread: 0,
+      });
+      this.renderConversationList();
+      await this.selectConversation(`group:${groupUUID}`);
+
+      this.elements.createGroupName.value = "";
+      this.elements.createGroupNotice.value = "";
+      this.setSidebarHint(`群组创建成功：${groupName}`);
+    } catch (err) {
+      console.warn("create group failed:", err);
+      this.setSidebarHint("创建群组失败", true);
+    }
+  }
+
+  async handleJoinGroup() {
+    const groupUUID = this.elements.joinGroupUuid?.value.trim() || "";
+    if (!groupUUID) {
+      this.setSidebarHint("请输入群 UUID", true);
+      return;
+    }
+    if (!this.currentUser?.uuid) {
+      this.setSidebarHint("请先登录", true);
+      return;
+    }
+
+    try {
+      const joinResp = await this.fetchJson(
+        `/group/join/${encodeURIComponent(this.currentUser.uuid)}/${encodeURIComponent(groupUUID)}`,
+        { method: "POST" },
+      );
+
+      if (!joinResp || joinResp.code !== 0) {
+        this.setSidebarHint(joinResp?.msg || "加入群失败", true);
+        return;
+      }
+
+      this.ensureGroupConversation(groupUUID);
+      this.renderConversationList();
+      await this.selectConversation(`group:${groupUUID}`);
+      this.elements.joinGroupUuid.value = "";
+      this.setSidebarHint("加入群聊成功");
+    } catch (err) {
+      console.warn("join group failed:", err);
+      this.setSidebarHint("加入群聊失败", true);
+    }
+  }
+
+  renderConversationList() {
+    if (!this.elements.friendsList) {
+      return;
+    }
+
+    const entries = Array.from(this.conversations.values()).sort((a, b) => {
+      if (a.key === "broadcast") return -1;
+      if (b.key === "broadcast") return 1;
+      return a.label.localeCompare(b.label, "zh-CN");
+    });
+
+    this.elements.friendsList.innerHTML = "";
+    for (const conv of entries) {
+      const item = document.createElement("div");
+      item.className = "friend-item";
+      if (conv.key === this.currentConversationKey) {
+        item.classList.add("active");
+      }
+      item.dataset.key = conv.key;
+
+      let avatar = "👤";
+      if (conv.type === "broadcast") {
+        avatar = "👥";
+      } else if (conv.type === "assistant") {
+        avatar = "🤖";
+      }
+      const unread = conv.unread > 0 ? ` (${conv.unread})` : "";
+      item.innerHTML = `
+        <div class="friend-avatar">${avatar}</div>
+        <div class="friend-info">
+          <div class="friend-name">${this.escapeHtml(conv.label)}${unread}</div>
+          <div class="friend-status">${this.escapeHtml(conv.status || "")}</div>
+        </div>
+      `;
+      item.addEventListener("click", () => this.selectConversation(conv.key));
+      this.elements.friendsList.appendChild(item);
+    }
+  }
+
+  async selectConversation(conversationKey) {
+    this.currentConversationKey = conversationKey;
+    const current = this.conversations.get(conversationKey);
+    if (!current) {
+      return;
+    }
+
+    current.unread = 0;
+    if (this.elements.chatTitle) {
+      this.elements.chatTitle.textContent = current.label;
+    }
+    this.renderConversationList();
+    this.renderCurrentMessages();
+    await this.loadHistoryForCurrentConversation();
+    this.startOnlineStatusPolling();
+  }
+
+  renderCurrentMessages() {
+    if (!this.elements.chatMessages) {
+      return;
+    }
+    this.elements.chatMessages.innerHTML = "";
+
+    const messages = this.messagesByConversation.get(this.currentConversationKey) || [];
+    if (messages.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.textContent = "暂无消息";
+      this.elements.chatMessages.appendChild(empty);
+      return;
+    }
+
+    for (const message of messages) {
+      this.appendMessageToView(message);
+    }
+    this.elements.chatMessages.scrollTop = this.elements.chatMessages.scrollHeight;
+  }
+
+  appendMessageToView(message) {
+    if (!this.elements.chatMessages) {
+      return;
+    }
+
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `message ${message.own ? "own" : "other"}`;
+
+    const header = document.createElement("div");
+    header.className = "message-header";
+
+    const username = document.createElement("span");
+    username.className = "message-username";
+    username.textContent = message.senderName;
+
+    const time = document.createElement("span");
+    time.className = "message-time";
+    time.textContent = this.formatTime(message.timestamp);
+
+    const content = document.createElement("div");
+    content.className = "message-content";
+    content.textContent = message.content;
+
+    header.appendChild(username);
+    header.appendChild(time);
+
+    messageDiv.appendChild(header);
+    messageDiv.appendChild(content);
+    this.elements.chatMessages.appendChild(messageDiv);
+  }
+
+  pushMessage(conversationKey, message) {
+    if (!this.messagesByConversation.has(conversationKey)) {
+      this.messagesByConversation.set(conversationKey, []);
+    }
+    const list = this.messagesByConversation.get(conversationKey);
+    list.push(message);
+    if (list.length > 300) {
+      list.shift();
+    }
+  }
+
+  async loadHistoryForCurrentConversation() {
+    const current = this.conversations.get(this.currentConversationKey);
+    if (!current || current.type !== "group") {
+      return;
+    }
+
+    try {
+      const resp = await this.fetchJson(`/group/${encodeURIComponent(current.target)}/history`);
+      if (!resp || resp.code !== 0 || !Array.isArray(resp.data)) {
+        return;
+      }
+
+      const history = resp.data.map((item) => {
+        const senderId = item.fromUser || "";
+        const own = senderId === this.currentUser?.uuid;
+        return {
+          senderId,
+          senderName: own
+            ? (this.currentUser?.nickname || this.currentUser?.username || "我")
+            : senderId,
+          content: item.content || "",
+          own,
+          timestamp: item.createdAt || Date.now(),
+        };
+      });
+      this.messagesByConversation.set(this.currentConversationKey, history);
+      this.renderCurrentMessages();
+    } catch (err) {
+      console.warn("load history failed:", err);
+    }
+  }
+
+  connect() {
+    if (!this.currentUser?.uuid) {
+      this.updateConnectionStatus(false, "未登录");
+      return;
+    }
+
+    const wsBase = this.getWsBaseUrl();
+    const separator = wsBase.includes("?") ? "&" : "?";
+    const wsUrl = `${wsBase}${separator}user=${encodeURIComponent(this.currentUser.uuid)}`;
+
+    try {
+      this.ws = new WebSocket(wsUrl);
+      this.ws.binaryType = "arraybuffer";
+
+      this.ws.onopen = () => {
+        this.reconnectAttempts = 0;
+        this.updateConnectionStatus(true, "已连接");
+        this.startHeartbeat();
+      };
+
+      this.ws.onmessage = async (event) => {
+        await this.handleIncomingMessage(event.data);
+      };
+
+      this.ws.onerror = () => {
+        this.updateConnectionStatus(false, "连接异常");
+      };
+
+      this.ws.onclose = () => {
+        this.stopHeartbeat();
+        this.updateConnectionStatus(false, "连接中...");
+        this.attemptReconnect();
+      };
+    } catch (err) {
+      console.error("connect websocket failed:", err);
+      this.updateConnectionStatus(false, "连接失败");
+      this.attemptReconnect();
+    }
+  }
+
+  attemptReconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      this.updateConnectionStatus(false, "连接失败，请刷新页面");
+      return;
+    }
+
+    this.reconnectAttempts += 1;
+    setTimeout(() => this.connect(), this.reconnectDelay);
+  }
+
+  startHeartbeat() {
+    this.stopHeartbeat();
+    this.heartbeatTimer = setInterval(() => {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+        return;
+      }
+      const heartbeat = this.codec.encode({
+        type: "heatbeat",
+        content: "ping",
+      });
+      try {
+        this.ws.send(heartbeat);
+      } catch (err) {
+        console.warn("send heartbeat failed:", err);
+      }
+    }, 25000);
+  }
+
+  stopHeartbeat() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
+  async handleIncomingMessage(data) {
+    let message;
+    try {
+      message = await this.parseIncomingPayload(data);
+    } catch (err) {
+      console.warn("parse incoming message failed:", err);
+      return;
+    }
+
+    if (!message) {
+      return;
+    }
+    if (message.type === "heatbeat") {
+      return;
+    }
+    if (!message.content && !message.url) {
+      return;
+    }
+
+    const conversationKey = this.resolveConversationKey(message);
+    if (!conversationKey) {
+      return;
+    }
+
+    const own = message.from === this.currentUser?.uuid;
+    const senderName = own
+      ? (this.currentUser?.nickname || this.currentUser?.username || "我")
+      : (message.fromUsername || message.from || "系统");
+    const content = message.content || (message.url ? `[文件] ${message.url}` : "");
+
+    const record = {
+      senderId: message.from || "",
+      senderName,
+      content,
+      own,
+      timestamp: Date.now(),
+    };
+
+    this.pushMessage(conversationKey, record);
+    if (conversationKey === this.currentConversationKey) {
+      if (this.elements.chatMessages?.querySelector(".empty-state")) {
+        this.elements.chatMessages.innerHTML = "";
+      }
+      this.appendMessageToView(record);
+      this.elements.chatMessages.scrollTop = this.elements.chatMessages.scrollHeight;
+    } else {
+      const conv = this.conversations.get(conversationKey);
+      if (conv) {
+        conv.unread = (conv.unread || 0) + 1;
+        this.renderConversationList();
+      }
+    }
+  }
+
+  resolveConversationKey(message) {
+    if (message.from === "System" || message.to === "") {
+      this.ensureDefaultConversations();
+      return "broadcast";
+    }
+
+    if (message.messageType === 2) {
+      this.ensureGroupConversation(message.to);
+      this.renderConversationList();
+      return `group:${message.to}`;
+    }
+
+    const own = message.from === this.currentUser?.uuid;
+    const peerUUID = own ? message.to : message.from;
+    if (!peerUUID) {
+      return null;
+    }
+    const peerLabel = own ? peerUUID : (message.fromUsername || peerUUID);
+    this.ensureUserConversation(peerUUID, peerLabel);
+    this.renderConversationList();
+    return `user:${peerUUID}`;
+  }
+
+  async parseIncomingPayload(data) {
+    if (data instanceof ArrayBuffer) {
+      return this.codec.decode(new Uint8Array(data));
+    }
+
+    if (data instanceof Blob) {
+      const buffer = await data.arrayBuffer();
+      return this.codec.decode(new Uint8Array(buffer));
+    }
+
+    if (typeof data === "string") {
+      const parsed = JSON.parse(data);
+      return {
+        fromUsername: parsed.username || "",
+        content: parsed.content || "",
+        from: parsed.from || "",
+        to: parsed.to || "",
+        messageType: parsed.messageType || 0,
+        type: parsed.type || "",
+        url: parsed.url || "",
+      };
+    }
+
+    return null;
+  }
+
+  sendMessage() {
+    const content = this.elements.messageInput?.value.trim();
+    if (!content) {
+      return;
+    }
+    if (!this.currentUser?.uuid) {
+      alert("请先登录");
+      return;
+    }
+    const current = this.conversations.get(this.currentConversationKey);
+    if (!current) {
+      return;
+    }
+    if (current.type === "assistant") {
+      this.sendMessageToAssistant(content);
+      return;
+    }
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      alert("连接未建立，请稍后再试");
+      return;
+    }
+
+    let to = "";
+    let messageType = 2;
+    if (current.type === "user") {
+      to = current.target;
+      messageType = 1;
+    } else if (current.type === "group") {
+      to = current.target;
+      messageType = 2;
+    }
+
+    const payload = this.codec.encode({
+      from: this.currentUser.uuid,
+      fromUsername: this.currentUser.nickname || this.currentUser.username,
+      to,
+      content,
+      contentType: 1,
+      type: "",
+      messageType,
+      avatar: this.currentUser.avatar || "",
+    });
+
+    try {
+      this.ws.send(payload);
+      this.elements.messageInput.value = "";
+      this.elements.messageInput.focus();
+    } catch (err) {
+      console.error("send message failed:", err);
+      alert("发送失败，请重试");
+    }
+  }
+
+  async sendMessageToAssistant(content) {
+    const current = this.conversations.get(this.currentConversationKey);
+    if (!current || current.type !== "assistant") {
+      return;
+    }
+
+    const userRecord = {
+      senderId: this.currentUser?.uuid || "",
+      senderName: this.currentUser?.nickname || this.currentUser?.username || "我",
+      content,
+      own: true,
+      timestamp: Date.now(),
+    };
+    this.pushMessage(this.currentConversationKey, userRecord);
+    this.renderCurrentMessages();
+
+    if (this.elements.messageInput) {
+      this.elements.messageInput.value = "";
+      this.elements.messageInput.focus();
+    }
+
+    const history = (this.messagesByConversation.get(this.currentConversationKey) || [])
+      .slice(0, -1)
+      .slice(-20)
+      .map((item) => ({
+        role: item.own ? "user" : "assistant",
+        content: item.content || "",
+      }))
+      .filter((item) => item.content.trim().length > 0);
+
+    try {
+      const resp = await this.fetchJson("/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: content,
+          history,
+        }),
+      });
+
+      if (!resp || resp.code !== 0 || !resp.data?.reply) {
+        throw new Error(resp?.msg || "AI 回复失败");
+      }
+
+      const assistantRecord = {
+        senderId: "assistant",
+        senderName: "AI 助手",
+        content: String(resp.data.reply),
+        own: false,
+        timestamp: Date.now(),
+      };
+      this.pushMessage(this.currentConversationKey, assistantRecord);
+      this.renderCurrentMessages();
+    } catch (err) {
+      const errorRecord = {
+        senderId: "assistant",
+        senderName: "AI 助手",
+        content: `请求失败：${err?.message || "未知错误"}`,
+        own: false,
+        timestamp: Date.now(),
+      };
+      this.pushMessage(this.currentConversationKey, errorRecord);
+      this.renderCurrentMessages();
+    }
+  }
+
+  updateConnectionStatus(connected, statusText) {
+    if (!this.elements.statusDot || !this.elements.statusText) {
+      return;
+    }
+    if (connected) {
+      this.elements.statusDot.classList.add("connected");
+    } else {
+      this.elements.statusDot.classList.remove("connected");
+    }
+    this.elements.statusText.textContent = statusText || (connected ? "已连接" : "连接中...");
+  }
+
+  startOnlineStatusPolling() {
+    this.stopOnlineStatusPolling();
+    this.refreshSelectedUserOnlineStatus();
+    this.onlineStatusTimer = setInterval(() => {
+      this.refreshSelectedUserOnlineStatus();
+    }, 15000);
+  }
+
+  stopOnlineStatusPolling() {
+    if (this.onlineStatusTimer) {
+      clearInterval(this.onlineStatusTimer);
+      this.onlineStatusTimer = null;
+    }
+  }
+
+  async refreshSelectedUserOnlineStatus() {
+    const current = this.conversations.get(this.currentConversationKey);
+    if (!current || current.type !== "user" || !current.target) {
+      return;
+    }
+    try {
+      const resp = await this.fetchJson(`/status/user/online?uuid=${encodeURIComponent(current.target)}`);
+      if (!resp || resp.code !== 0 || !resp.data) {
+        return;
+      }
+      current.status = resp.data.online ? "在线" : "离线";
+      this.renderConversationList();
+    } catch (err) {
+      console.warn("refresh user online status failed:", err);
+    }
+  }
+
+  getBaseUrl() {
+    if (window.backend?.baseUrl) {
+      return window.backend.baseUrl();
+    }
+    if (window.location?.origin && /^https?:\/\//.test(window.location.origin)) {
+      return window.location.origin;
+    }
+    return "http://localhost:8081";
+  }
+
+  getWsBaseUrl() {
+    if (window.backend?.wsUrl) {
+      return window.backend.wsUrl();
+    }
+    const base = this.getBaseUrl();
+    try {
+      const url = new URL(base);
+      url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+      url.pathname = "/ws";
+      url.search = "";
+      url.hash = "";
+      return url.toString();
+    } catch (_err) {
+      return "ws://localhost:8081/ws";
+    }
+  }
+
+  async fetchJson(path, options = {}) {
+    if (window.backend?.fetchJson) {
+      return window.backend.fetchJson(path, options);
+    }
+    const response = await fetch(`${this.getBaseUrl()}${path}`, options);
+    return response.json();
+  }
+
+  formatTime(timestamp) {
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+    const now = Date.now();
+    const diff = now - date.getTime();
+
+    if (diff < 60000) {
+      return "刚刚";
+    }
+    if (diff < 3600000) {
+      return `${Math.floor(diff / 60000)}分钟前`;
+    }
+    if (diff < 86400000) {
+      return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+    }
+    return date.toLocaleString("zh-CN", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  escapeHtml(text) {
+    return String(text)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  new ChatApp();
+});
